@@ -406,6 +406,135 @@ body {
 .footer-nav a { color: var(--accent-hi); text-decoration: none; }
 .footer-nav a:hover { text-decoration: underline; }
 
+/* ── Ingest tab ──────────────────────────────────────── */
+.ingest-section-label {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted); padding: 2px 2px 1px;
+  flex-shrink: 0;
+}
+.ingest-dropzone {
+  border: 2px dashed var(--border); border-radius: 8px;
+  padding: 16px 10px; text-align: center; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--surface2); flex-shrink: 0;
+}
+.ingest-dropzone:hover, .ingest-dropzone.drag-over {
+  border-color: var(--accent); background: rgba(124,106,247,0.07);
+}
+.ingest-drop-icon { font-size: 1.5rem; line-height: 1; }
+.ingest-drop-text { font-weight: 600; font-size: 0.82rem; margin-top: 5px; }
+.ingest-drop-sub  { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+.ingest-quick-row { display: flex; gap: 4px; flex-shrink: 0; }
+.ingest-quick-row .btn { flex: 1; min-width: 0; font-size: 0.72rem; padding: 5px 4px; }
+.ingest-btn-recording { background: var(--node-orph) !important; color: #fff !important; }
+.ingest-inbox-strip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px; border-radius: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-size: 0.74rem; flex-shrink: 0;
+}
+.inbox-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: var(--border); transition: background 0.3s;
+}
+.inbox-dot.watching  { background: var(--node-hub); }
+.inbox-dot.throttled { background: var(--tag-col); }
+.ingest-item {
+  padding: 6px 8px; border-radius: 5px;
+  background: var(--surface2); border: 1px solid var(--border);
+  margin-bottom: 3px; flex-shrink: 0;
+}
+.ingest-item-row  { display: flex; align-items: center; gap: 5px; }
+.ingest-item-row2 { display: flex; align-items: center; gap: 5px; margin-top: 2px; padding-left: 18px; }
+.ingest-type-icon { font-size: 0.85rem; flex-shrink: 0; }
+.ingest-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; }
+.ingest-item-status { font-size: 0.7rem; flex: 1; }
+.ingest-item-size  { font-size: 0.67rem; color: var(--muted); flex-shrink: 0; }
+.ingest-process-btn { padding: 1px 8px !important; font-size: 0.68rem !important; flex-shrink: 0; }
+.ingest-origin {
+  font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; flex-shrink: 0;
+}
+.ingest-origin.inbox { background: rgba(88,166,255,0.12); color: var(--node-def); }
+.ingest-origin.drop  { background: rgba(124,106,247,0.12); color: var(--accent-hi); }
+.ingest-origin.rec   { background: rgba(248,81,73,0.12);  color: var(--node-orph); }
+.ingest-origin.url   { background: rgba(14,165,233,0.12); color: #0ea5e9; }
+.ingest-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 15px; height: 15px; border-radius: 8px;
+  background: var(--accent); color: #fff;
+  font-size: 0.62rem; font-weight: 700; margin-left: 3px; padding: 0 3px;
+}
+/* Review cards */
+.review-card {
+  border: 1px solid var(--border); border-radius: 7px;
+  padding: 10px 12px; margin-bottom: 8px; background: var(--surface2);
+  transition: opacity 0.2s;
+}
+.review-card-hdr { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.review-action {
+  font-size: 0.63rem; font-weight: 700; padding: 1px 6px;
+  border-radius: 3px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.action-create { background: rgba(63,185,80,0.15);  color: var(--node-hub); }
+.action-update { background: rgba(88,166,255,0.15); color: var(--node-def); }
+.review-card-title { font-weight: 600; font-size: 0.82rem; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-card-type  { font-size: 0.67rem; color: var(--muted); flex-shrink: 0; }
+.review-preview {
+  font-size: 0.72rem; color: var(--muted); line-height: 1.45;
+  margin-bottom: 7px; white-space: pre-wrap; word-break: break-word;
+  max-height: 70px; overflow: hidden;
+}
+.review-actions { display: flex; gap: 6px; }
+#ingest-url-row  { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+#ingest-paste-row { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+#ingest-paste-text { height: 72px !important; min-height: 72px !important; flex: none !important; font-size: 0.78rem; padding: 8px; border-radius: 5px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); outline: none; resize: none; font-family: inherit; }
+#ingest-paste-text:focus { border-color: var(--accent); }
+
+/* ── Tier 3 AI Audit ──────────────────────────────────────────────────────── */
+.audit-ai-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 4px; }
+.audit-ai-btn {
+  flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg2); color: var(--fg);
+  font-size: 0.72rem; cursor: pointer; text-align: center;
+  transition: background 0.15s;
+}
+.audit-ai-btn:hover:not(:disabled) { background: var(--bg3); border-color: var(--accent); }
+.audit-ai-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.lint-card {
+  border: 1px solid var(--border); border-radius: 7px;
+  padding: 8px 10px; margin: 4px 0; font-size: 0.78rem;
+}
+.lint-card.contradiction { border-left: 3px solid #ffa657; }
+.lint-card.gap           { border-left: 3px solid var(--accent); }
+.lint-card.stale         { border-left: 3px solid var(--muted); }
+.lint-card-label { font-weight: 700; font-size: 0.70rem; text-transform: uppercase;
+  letter-spacing: 0.04em; margin-bottom: 5px; opacity: 0.7; }
+.lint-card-title { font-weight: 600; font-size: 0.80rem; margin-bottom: 3px; }
+.lint-card-body  { font-size: 0.73rem; color: var(--muted); margin-bottom: 6px;
+  line-height: 1.45; }
+.lint-card-quote {
+  font-style: italic; color: var(--muted); font-size: 0.71rem;
+  background: var(--bg2); padding: 3px 6px; border-radius: 4px; margin: 3px 0;
+}
+.lint-actions { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+.lint-btn {
+  padding: 3px 9px; border-radius: 4px; font-size: 0.71rem; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg3); color: var(--fg);
+  transition: background 0.1s;
+}
+.lint-btn:hover { background: var(--border); }
+.lint-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.lint-btn.primary:hover { opacity: 0.85; }
+#moc-gen-btn {
+  position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%);
+  padding: 6px 16px; border-radius: 20px; border: none;
+  background: #e879f9; color: #fff; font-size: 0.75rem; cursor: pointer;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  z-index: 10; white-space: nowrap;
+}
+#moc-gen-btn.visible { opacity: 1; pointer-events: auto; }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -640,6 +769,7 @@ body {
       <div class="sidebar-tabs">
         <button class="tab-btn active" data-tab="notes">Notes</button>
         <button class="tab-btn" data-tab="audit">Audit</button>
+        <button class="tab-btn" data-tab="ingest">📥</button>
       </div>
       <div class="tab-panel active" id="tab-notes">
         <input type="text" class="search-box" id="note-search" placeholder="Search notes…" autocomplete="off">
@@ -647,6 +777,39 @@ body {
       </div>
       <div class="tab-panel" id="tab-audit">
         <!-- built by JS -->
+      </div>
+      <!-- ── Ingest tab ─────────────────────────────── -->
+      <div class="tab-panel" id="tab-ingest">
+        <div class="ingest-section-label">Drop files</div>
+        <div class="ingest-dropzone" id="ingest-dropzone">
+          <div class="ingest-drop-icon">📥</div>
+          <div class="ingest-drop-text">Drop files here</div>
+          <div class="ingest-drop-sub">md · pdf · html · image · audio · csv</div>
+          <input type="file" id="ingest-file-input" multiple style="display:none">
+        </div>
+        <div class="ingest-quick-row">
+          <button class="btn btn-secondary" id="ingest-url-btn">🔗 URL</button>
+          <button class="btn btn-secondary" id="ingest-record-btn">🎤 Record</button>
+          <button class="btn btn-secondary" id="ingest-paste-btn">📋 Paste</button>
+        </div>
+        <div id="ingest-url-row" style="display:none">
+          <input class="search-box" id="ingest-url-input" placeholder="Paste URL here…" autocomplete="off">
+          <button class="btn btn-primary btn-sm" id="ingest-url-submit">Fetch</button>
+        </div>
+        <div id="ingest-paste-row" style="display:none">
+          <textarea id="ingest-paste-text" placeholder="Paste text here…"></textarea>
+          <button class="btn btn-primary btn-sm" id="ingest-paste-submit">Process</button>
+        </div>
+        <div class="ingest-inbox-strip" id="ingest-inbox-strip" style="display:none">
+          <span class="inbox-dot" id="inbox-dot"></span>
+          <span id="inbox-label">_inbox/ watcher</span>
+          <label class="autosave-lbl" style="margin-left:auto;gap:4px;font-size:0.72rem">
+            <input type="checkbox" id="ingest-auto-cb"> Auto
+          </label>
+        </div>
+        <div class="ingest-section-label" style="margin-top:6px">Queue</div>
+        <div id="ingest-queue" style="overflow-y:auto;flex:1"></div>
+        <button class="btn btn-primary btn-sm" id="ingest-process-all-btn" style="margin-top:6px;flex-shrink:0">Process All</button>
       </div>
     </aside>
 
@@ -664,6 +827,7 @@ body {
         <button class="ctrl-btn" id="btn-sim"  title="Pause/resume simulation">⏸</button>
         <button class="ctrl-btn" id="btn-3d"  title="Toggle 3D view">3D</button>
       </div>
+      <button id="moc-gen-btn" title="Generate a Map of Content for this note and its neighbors">⬡ Generate MOC for neighborhood</button>
       <div id="rot-hint">0°</div>
       <div class="graph-legend" id="graph-legend">
         <div class="legend-item"><div class="legend-dot" style="background:#e879f9"></div>MOC</div>
@@ -892,6 +1056,22 @@ body {
 
     <div class="help-footer">
       <button class="btn btn-primary btn-sm" id="help-close-2">Got it</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Ingest review overlay ────────────────────────────────────────────────── -->
+<div class="help-overlay" id="ingest-review">
+  <div class="help-dialog" style="max-height:88vh">
+    <div class="help-dialog-hdr">
+      <span class="help-dialog-title" id="ingest-review-title">Review proposed notes</span>
+      <button class="close-btn" id="ingest-review-close">✕</button>
+    </div>
+    <div class="help-body" id="ingest-review-body" style="padding:14px"></div>
+    <div class="help-footer" style="gap:8px">
+      <span id="ingest-review-source-saved" style="flex:1;font-size:0.72rem;color:var(--node-hub)"></span>
+      <button class="btn btn-secondary btn-sm" id="ingest-review-done">Done</button>
+      <button class="btn btn-primary btn-sm" id="ingest-review-accept-all">Accept All</button>
     </div>
   </div>
 </div>
@@ -1682,6 +1862,7 @@ function showNotePanel(note) {
 
 function closeNotePanel() {
   document.getElementById('note-panel').classList.remove('open');
+  document.getElementById('moc-gen-btn').classList.remove('visible');
   view.selected = null;
   document.querySelectorAll('.note-item.selected').forEach(el => el.classList.remove('selected'));
 }
@@ -1718,6 +1899,13 @@ function selectNode(node) {
   // Always update context pill (chat is now always visible)
   const ctxPill = document.getElementById('chat-ctx-pill');
   if (ctxPill) { ctxPill.textContent = getCtxLabel(); ctxPill.style.display = 'block'; }
+
+  // Show MOC button if this node has at least 1 connected neighbor
+  const mocBtn = document.getElementById('moc-gen-btn');
+  if (mocBtn) {
+    const neighborCount = g.edges.filter(e => e.s === node || e.t === node).length;
+    mocBtn.classList.toggle('visible', neighborCount >= 1);
+  }
 }
 
 function selectNoteByKey(key) {
@@ -1853,6 +2041,320 @@ function highlightTerms(text, terms) {
   return escaped.replace(re, '<mark>$1</mark>');
 }
 
+// ── Tier 3: Wiki maintenance / lint ───────────────────────────────────────────
+
+const lintState = {
+  contradictions: [],   // [{entity, claim_in_page, claim_in_source, source}]
+  gaps: [],             // [{type, name, count, path?}]
+  stale: [],            // [{entityName, entityPath, entityDate, newerCount, latestSource}]
+  running: false,
+};
+
+// §3.15 Gap analysis — no AI needed; purely structural
+function runGapAnalysis() {
+  if (lintState.running) return;
+  const notes    = Array.from(vault.byPath.values());
+  const srcNotes = notes.filter(n => n.path.startsWith('_sources/'));
+  const noteNames = new Set(notes.map(n => n.name.toLowerCase()));
+
+  // Collect entity names from source frontmatter
+  const entityMentions = new Map();
+  for (const src of srcNotes) {
+    const ents = Array.isArray(src.fm.entities) ? src.fm.entities : [];
+    for (const e of ents) {
+      const name = String(e).trim();
+      if (name) entityMentions.set(name, (entityMentions.get(name) || 0) + 1);
+    }
+  }
+
+  // Gap type 1: mentioned 2+ times but no vault page exists
+  const missingPages = [...entityMentions.entries()]
+    .filter(([name, count]) => count >= 2 && !noteNames.has(name.toLowerCase()))
+    .sort((a, b) => b[1] - a[1]).slice(0, 12)
+    .map(([name, count]) => ({ type: 'missing_page', name, count }));
+
+  // Gap type 2: broken [[wikilinks]] referenced from 2+ notes
+  const brokenCounts = new Map();
+  for (const e of vault.edges) {
+    if (!e.resolved) brokenCounts.set(e.target, (brokenCounts.get(e.target) || 0) + 1);
+  }
+  const brokenLinks = [...brokenCounts.entries()]
+    .filter(([, c]) => c >= 2)
+    .sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([name, count]) => ({ type: 'broken_link', name, count }))
+    .filter(g => !missingPages.some(m => m.name.toLowerCase() === g.name.toLowerCase()));
+
+  // Gap type 3: VaultMind entity pages with source_count: 1 (thin topics)
+  const thinPages = notes
+    .filter(n => n.fm.vaultmind_version && parseInt(n.fm.source_count) === 1)
+    .slice(0, 8)
+    .map(n => ({ type: 'thin', name: n.name, count: 1, path: n.path }));
+
+  lintState.gaps = [...missingPages, ...brokenLinks, ...thinPages];
+  buildAuditPanel();
+  ingestToast(`Gap analysis: ${lintState.gaps.length} items found`);
+}
+
+// §3.16 Staleness check — date comparison only, no AI
+function runStalenessCheck() {
+  if (lintState.running) return;
+  const notes      = Array.from(vault.byPath.values());
+  const srcNotes   = notes.filter(n => n.path.startsWith('_sources/') && n.fm.date_ingested);
+  const entityPages = notes.filter(n => n.fm.vaultmind_version &&
+    (n.fm.last_updated || n.fm.first_seen) && n.fm.page_type !== 'moc');
+
+  lintState.stale = [];
+  for (const entity of entityPages) {
+    const entityDate = new Date(entity.fm.last_updated || entity.fm.first_seen || 0);
+    const eName = entity.name.toLowerCase();
+    const related = srcNotes.filter(src => {
+      const ents = Array.isArray(src.fm.entities) ? src.fm.entities.map(e => String(e).toLowerCase()) : [];
+      return ents.some(e => e.includes(eName) || eName.includes(e)) ||
+             src.body.toLowerCase().includes(eName);
+    });
+    const newer = related.filter(src => new Date(src.fm.date_ingested) > entityDate);
+    if (newer.length > 0) {
+      const latestSrc = newer.sort((a, b) =>
+        new Date(b.fm.date_ingested) - new Date(a.fm.date_ingested))[0];
+      lintState.stale.push({
+        entityName:   entity.name,
+        entityPath:   entity.path,
+        entityDate:   (entity.fm.last_updated || entity.fm.first_seen).slice(0, 10),
+        newerCount:   newer.length,
+        latestSource: latestSrc.name,
+        latestDate:   latestSrc.fm.date_ingested.slice(0, 10),
+      });
+    }
+  }
+
+  buildAuditPanel();
+  ingestToast(`Staleness check: ${lintState.stale.length} stale notes`);
+}
+
+// §3.14 Contradiction scan — AI-powered, on-demand
+async function runContradictionScan() {
+  if (lintState.running) { ingestToast('Another lint op is running…'); return; }
+  if (chat.mode === 'none' || (!chat.modelReady && chat.mode === 'local')) {
+    ingestToast('Load a model first to scan for contradictions', 'var(--tag-col)'); return;
+  }
+  if (chat.streaming || ingest.processing) {
+    ingestToast('Chat or ingest is running — wait first', 'var(--tag-col)'); return;
+  }
+  lintState.running = true;
+  const btn = document.getElementById('contradiction-scan-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Scanning…'; }
+
+  try {
+    const notes       = Array.from(vault.byPath.values());
+    const srcNotes    = notes.filter(n => n.path.startsWith('_sources/')).slice(-6);
+    const entityPages = notes.filter(n => n.fm.vaultmind_version && n.fm.page_type !== 'moc').slice(0, 10);
+
+    if (srcNotes.length === 0 || entityPages.length === 0) {
+      lintState.contradictions = [];
+    } else {
+      const entityBlock = entityPages.map(n =>
+        `## ${n.name}\n${n.body.slice(0, 300)}`).join('\n\n');
+      const sourceBlock = srcNotes.map(n =>
+        `## ${n.name}\n${n.body.slice(0, 400)}`).join('\n\n');
+
+      const prompt = `You are a knowledge base quality auditor. Find factual contradictions.
+
+ENTITY PAGES:
+${entityBlock}
+
+RECENT SOURCES:
+${sourceBlock}
+
+Return ONLY JSON: {"contradictions":[{"entity":"name","claim_in_page":"...","claim_in_source":"...","source":"source note name"}]}
+If none, return {"contradictions":[]}.`;
+
+      const raw    = await ingestCallAI(prompt, 600);
+      const result = parseIngestJSON(raw);
+      lintState.contradictions = (result.contradictions || []).slice(0, 10);
+    }
+  } catch (e) {
+    console.warn('Contradiction scan error:', e);
+    lintState.contradictions = [];
+  }
+
+  lintState.running = false;
+  if (btn) { btn.disabled = false; btn.textContent = '🔍 Scan contradictions'; }
+  buildAuditPanel();
+  ingestToast(`Contradiction scan: ${lintState.contradictions.length} found`);
+}
+
+// §3.16 Re-synthesize a stale entity page
+window.resynthesizeNote = async function(path) {
+  if (chat.mode === 'none' || (!chat.modelReady && chat.mode === 'local')) {
+    ingestToast('Load a model first', 'var(--tag-col)'); return;
+  }
+  if (chat.streaming || ingest.processing) { ingestToast('Wait for running op to finish', 'var(--tag-col)'); return; }
+  const note = vault.byPath.get(path);
+  if (!note) return;
+
+  ingestToast(`Re-synthesizing ${note.name}…`);
+  try {
+    const srcNotes = Array.from(vault.byPath.values())
+      .filter(n => n.path.startsWith('_sources/'))
+      .filter(src => {
+        const ents = Array.isArray(src.fm.entities) ? src.fm.entities.map(e => String(e).toLowerCase()) : [];
+        return ents.some(e => e.includes(note.name.toLowerCase())) ||
+               src.body.toLowerCase().includes(note.name.toLowerCase());
+      }).slice(0, 5);
+
+    const context = srcNotes.map(s => `## From ${s.name}\n${s.body.slice(0, 400)}`).join('\n\n')
+      || `Entity "${note.name}" — no source notes found.`;
+
+    const prompt = `You are updating an Obsidian entity page for "${note.name}".
+
+EXISTING BODY:
+${note.body.slice(0, 500)}
+
+SOURCES TO INCORPORATE:
+${context}
+
+Rewrite the page body (no frontmatter). Keep accurate existing content. Add new info from sources. Use [[wikilinks]] for entity names. 2-4 paragraphs. Return ONLY the body text.`;
+
+    const newBody = await ingestCallAI(prompt, 600);
+
+    // Rebuild frontmatter with updated last_updated
+    const now = new Date().toISOString();
+    const fm  = { ...note.fm, last_updated: now };
+    let fmStr = '---\n';
+    for (const [k, v] of Object.entries(fm)) {
+      if (Array.isArray(v)) fmStr += `${k}: [${v.map(x => `"${x}"`).join(', ')}]\n`;
+      else fmStr += `${k}: ${typeof v === 'string' && /[ :"[\]{}]/.test(v) ? `"${v}"` : v}\n`;
+    }
+    fmStr += '---\n\n';
+
+    const fullContent = fmStr + newBody.trim() + '\n';
+    await writeVaultFile(note.path.split('/'), fullContent);
+    note.body = newBody.trim();
+    note.fm.last_updated = now;
+
+    // Remove from stale list
+    lintState.stale = lintState.stale.filter(s => s.entityPath !== path);
+    ingestToast(`✓ ${note.name} re-synthesized`);
+    buildAuditPanel();
+  } catch (e) {
+    ingestToast(`Re-synthesize error: ${e.message}`, 'var(--node-warn)');
+  }
+};
+
+// §3.15 Create a missing entity page
+window.createGapPage = async function(name) {
+  if (chat.mode === 'none' || (!chat.modelReady && chat.mode === 'local')) {
+    ingestToast('Load a model first', 'var(--tag-col)'); return;
+  }
+  if (chat.streaming || ingest.processing) { ingestToast('Wait for running op to finish', 'var(--tag-col)'); return; }
+
+  ingestToast(`Creating page for ${name}…`);
+  try {
+    const srcNotes = Array.from(vault.byPath.values())
+      .filter(n => n.path.startsWith('_sources/'))
+      .filter(s => s.body.toLowerCase().includes(name.toLowerCase()) ||
+        (Array.isArray(s.fm.entities) && s.fm.entities.some(e => String(e).toLowerCase() === name.toLowerCase())))
+      .slice(0, 4);
+
+    const context = srcNotes.map(s => `## From ${s.name}\n${s.body.slice(0, 400)}`).join('\n\n')
+      || `Entity "${name}" is mentioned in vault sources.`;
+
+    const prompt = `Create a brief Obsidian entity page for "${name}".
+
+CONTEXT:
+${context}
+
+Return ONLY JSON:
+{"page_type":"entity","entity_type":"person|organization|tool|concept|place","overview":"1-2 paragraph overview","tags":["tag1"],"related":["related entity"]}`;
+
+    const raw    = await ingestCallAI(prompt, 400);
+    const result = parseIngestJSON(raw);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const now   = new Date().toISOString();
+    const slug  = slugify(name) || 'entity-' + Date.now();
+    const tags  = (result.tags || []).map(t => `"${t}"`).join(', ');
+    const rels  = (result.related || []).map(r => `"[[${r}]]"`).join(', ');
+
+    const content = `---\ntitle: "${name}"\npage_type: ${result.page_type || 'entity'}\nentity_type: ${result.entity_type || 'concept'}\nfirst_seen: ${today}\nsource_count: ${srcNotes.length}\nlast_updated: ${now}\ntags: [${tags}]\nrelated: [${rels}]\nvaultmind_version: 1\n---\n\n${result.overview || ''}\n`;
+
+    await writeVaultFile([`${slug}.md`], content);
+    addNoteToVault(`${slug}.md`, content);
+    await saveIndexMd();
+
+    lintState.gaps = lintState.gaps.filter(g => g.name !== name);
+    ingestToast(`✓ Created: ${name}`);
+    buildAuditPanel();
+  } catch (e) {
+    ingestToast(`Create page error: ${e.message}`, 'var(--node-warn)');
+  }
+};
+
+// §3.17 Generate MOC for selected cluster
+window.generateMocForCluster = async function() {
+  if (!view.selected) return;
+  if (chat.mode === 'none' || (!chat.modelReady && chat.mode === 'local')) {
+    ingestToast('Load a model first', 'var(--tag-col)'); return;
+  }
+  if (chat.streaming || ingest.processing) { ingestToast('Wait for running op to finish', 'var(--tag-col)'); return; }
+
+  // Use selected node + its 1-hop neighbors
+  const center = view.selected;
+  const neighborIds = new Set();
+  for (const e of g.edges) {
+    if (e.s === center) neighborIds.add(e.t.id);
+    if (e.t === center) neighborIds.add(e.s.id);
+  }
+  const clusterNodes = [center, ...g.nodes.filter(n => neighborIds.has(n.id))];
+  if (clusterNodes.length < 2) { ingestToast('Select a note with at least 1 connected neighbor', 'var(--tag-col)'); return; }
+
+  const btn = document.getElementById('moc-gen-btn');
+  btn.textContent = '⏳ Generating…';
+  btn.disabled = true;
+
+  try {
+    const summaries = clusterNodes.map(n =>
+      `### ${n.note.name}\n${n.note.body.slice(0, 280)}`).join('\n\n');
+
+    const prompt = `You are creating a Map of Content (MOC) page for an Obsidian vault cluster.
+
+NOTES IN CLUSTER:
+${summaries}
+
+Generate a MOC that groups these notes into 1-3 themed sections. Return ONLY JSON:
+{"title":"Descriptive MOC Title","overview":"2-3 sentence overview of what this cluster covers","sections":[{"heading":"Section Name","notes":[{"name":"exact note name","description":"one-line description"}]}]}`;
+
+    const raw    = await ingestCallAI(prompt, 700);
+    const result = parseIngestJSON(raw);
+    if (!result.title) throw new Error('AI returned no title');
+
+    const now   = new Date().toISOString();
+    const today = now.slice(0, 10);
+    const slug  = slugify(result.title) || 'moc-' + Date.now();
+    const rels  = clusterNodes.map(n => `"[[${n.note.name}]]"`).join(', ');
+
+    let body = `---\ntitle: "${result.title}"\npage_type: moc\nfirst_seen: ${today}\nlast_updated: ${now}\ntags: ["moc"]\nrelated: [${rels}]\nvaultmind_version: 1\n---\n\n${result.overview || ''}\n\n`;
+    for (const section of (result.sections || [])) {
+      body += `## ${section.heading}\n\n`;
+      for (const note of (section.notes || [])) {
+        body += `- [[${note.name}]] — ${note.description}\n`;
+      }
+      body += '\n';
+    }
+
+    const filePath = `${slug}.md`;
+    await writeVaultFile([filePath], body);
+    addNoteToVault(filePath, body);
+    await saveIndexMd();
+    ingestToast(`⬡ MOC created: ${result.title}`);
+  } catch (e) {
+    ingestToast(`MOC error: ${e.message}`, 'var(--node-warn)');
+  }
+
+  btn.textContent = '⬡ Generate MOC for neighborhood';
+  btn.disabled = false;
+};
+
 function buildAuditPanel() {
   const notes    = Array.from(vault.byPath.values());
   const resolved = vault.edges.filter(e => e.resolved);
@@ -1952,6 +2454,70 @@ function buildAuditPanel() {
       <div class="audit-title">Frontmatter Lint</div>
       ${lintHtml}
     </div>
+
+    <div class="audit-section">
+      <div class="audit-title">Wiki Maintenance</div>
+      <div class="audit-ai-row">
+        <button class="audit-ai-btn" onclick="runGapAnalysis()" title="Find missing entity pages and thin topics">🔎 Analyze gaps</button>
+        <button class="audit-ai-btn" onclick="runStalenessCheck()" title="Find entity pages outdated relative to newer sources">🕓 Check staleness</button>
+        <button class="audit-ai-btn" id="contradiction-scan-btn" onclick="runContradictionScan()" title="AI-powered: find factual conflicts between sources and entity pages">🔍 Scan contradictions</button>
+      </div>
+    </div>
+
+    ${lintState.contradictions.length > 0 ? `
+    <div class="audit-section">
+      <div class="audit-title">Contradictions <span style="font-weight:400">(${lintState.contradictions.length})</span></div>
+      ${lintState.contradictions.map((c, i) => `
+      <div class="lint-card contradiction">
+        <div class="lint-card-label">Contradiction</div>
+        <div class="lint-card-title">[[${c.entity}]]</div>
+        <div class="lint-card-quote">Page says: "${c.claim_in_page}"</div>
+        <div class="lint-card-quote">Source says: "${c.claim_in_source}" <span style="opacity:0.6">(${c.source})</span></div>
+        <div class="lint-actions">
+          <button class="lint-btn primary" onclick="lintState.contradictions.splice(${i},1);buildAuditPanel()">Keep existing</button>
+          <button class="lint-btn" onclick="lintState.contradictions.splice(${i},1);buildAuditPanel()">Flag for review</button>
+          <button class="lint-btn" onclick="lintState.contradictions.splice(${i},1);buildAuditPanel()" style="color:var(--muted)">Dismiss</button>
+        </div>
+      </div>`).join('')}
+    </div>` : ''}
+
+    ${lintState.gaps.length > 0 ? `
+    <div class="audit-section">
+      <div class="audit-title">Gaps <span style="font-weight:400">(${lintState.gaps.length})</span></div>
+      ${lintState.gaps.slice(0, 12).map((g, i) => {
+        const typeLabel = g.type === 'missing_page' ? 'Missing page'
+          : g.type === 'broken_link' ? 'Broken link'
+          : 'Thin topic';
+        const desc = g.type === 'thin'
+          ? `Only 1 source — consider finding more.`
+          : `Referenced ${g.count}× but no page exists.`;
+        const canCreate = g.type !== 'thin';
+        return `<div class="lint-card gap">
+          <div class="lint-card-label">${typeLabel}</div>
+          <div class="lint-card-title">[[${g.name}]]</div>
+          <div class="lint-card-body">${desc}</div>
+          <div class="lint-actions">
+            ${canCreate ? `<button class="lint-btn primary" onclick="createGapPage('${g.name.replace(/'/g,"\\'")}')">✦ Create page</button>` : ''}
+            <button class="lint-btn" onclick="lintState.gaps.splice(${i},1);buildAuditPanel()">Skip</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+
+    ${lintState.stale.length > 0 ? `
+    <div class="audit-section">
+      <div class="audit-title">Stale Notes <span style="font-weight:400">(${lintState.stale.length})</span></div>
+      ${lintState.stale.slice(0, 10).map((s, i) => `
+      <div class="lint-card stale">
+        <div class="lint-card-label">Stale</div>
+        <div class="lint-card-title">[[${s.entityName}]]</div>
+        <div class="lint-card-body">Last updated ${s.entityDate}. ${s.newerCount} newer source${s.newerCount > 1 ? 's' : ''} available (latest: <em>${s.latestSource}</em>, ${s.latestDate}).</div>
+        <div class="lint-actions">
+          <button class="lint-btn primary" onclick="resynthesizeNote('${s.entityPath.replace(/'/g,"\\'")}')">↻ Re-synthesize</button>
+          <button class="lint-btn" onclick="lintState.stale.splice(${i},1);buildAuditPanel()">Dismiss</button>
+        </div>
+      </div>`).join('')}
+    </div>` : ''}
   `;
 }
 
@@ -2298,6 +2864,7 @@ async function loadFiles(files) {
     buildHeaderStats();
     saveIndexMd();  // write/update index.md if folder access exists
     startEmbedWorker(); // begin indexing vault for RAG
+    initIngestSystem(); // set up _inbox/ watcher and ingest tab
     // Show app first so canvas has real dimensions, then resize + draw
     document.getElementById('loading').classList.remove('visible');
     document.getElementById('drop-screen').classList.add('hiding');
@@ -2853,6 +3420,7 @@ function chatToast(msg) {
 
 async function chatSend() {
   if (chat.streaming) return;
+  if (ingest.processing) { chatToast('Ingest is running — please wait.'); return; }
   const ta  = document.getElementById('chat-textarea');
   const msg = ta.value.trim();
   if (!msg) return;
@@ -3223,6 +3791,1008 @@ document.getElementById('chat-search-send').addEventListener('click', async () =
 });
 
 window.addEventListener('resize', resizeCanvas);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Ingest System ─────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+const ingest = {
+  queue: [],                  // { id, file, name, type, size, origin, status, statusMsg, hash, content, result, meta }
+  knownInbox: new Set(),      // filenames already seen in _inbox/
+  processedHashes: new Set(), // SHA-256 hashes of files already processed
+  watchInterval: null,
+  autoProcess: false,
+  processing: false,
+  _currentId: null,
+  _inboxHandle: null,         // FileSystemDirectoryHandle for _inbox/
+  _inboxSizes: new Map(),     // filename → size at last poll (stability check)
+  whisperWorker: null,
+  _tesseractLoaded: false,
+  _pdfjsLoaded: null,         // cached pdfjs module
+  schema: null,               // contents of _schema.md
+  _proposed: [],              // proposed notes for current review session
+  _proposedAccepted: new Set(),
+  _proposedSkipped: new Set(),
+};
+
+let _ingestIdSeq = 0;
+
+// ── Whisper worker ────────────────────────────────────────────────────────────
+
+const WHISPER_WORKER_SRC = `
+import { env, pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4/+esm';
+env.allowLocalModels = false; env.allowRemoteModels = true;
+let transcriber = null;
+self.addEventListener('message', async ({ data }) => {
+  try {
+    if (data.type === 'load') {
+      transcriber = await pipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny.en', {
+        device: 'wasm',
+        progress_callback: p => self.postMessage({ type: 'progress', data: p }),
+      });
+      self.postMessage({ type: 'ready' });
+    } else if (data.type === 'transcribe') {
+      const audio = new Float32Array(data.audio);
+      const result = await transcriber(audio, { sampling_rate: 16000, return_timestamps: false });
+      self.postMessage({ type: 'transcript', text: result.text, id: data.id });
+    }
+  } catch (err) {
+    self.postMessage({ type: 'error', data: err.message, id: data.id });
+  }
+});
+`;
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+function detectFileType(file) {
+  const ext = file.name.toLowerCase().split('.').pop();
+  if (['md', 'txt'].includes(ext))                              return 'markdown';
+  if (ext === 'pdf')                                            return 'pdf';
+  if (['html', 'htm'].includes(ext))                            return 'html';
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'].includes(ext)) return 'image';
+  if (['webm', 'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac'].includes(ext)) return 'audio';
+  if (['json', 'csv'].includes(ext))                            return 'structured';
+  return 'unknown';
+}
+
+function getSourceType(fileType) {
+  return { markdown: 'article', pdf: 'pdf', html: 'web_article',
+           image: 'image_capture', audio: 'voice_memo',
+           structured: 'article', unknown: 'unknown' }[fileType] || 'unknown';
+}
+
+function slugify(text) {
+  return (text || '').toLowerCase().replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-').replace(/-+/g, '-').trim().slice(0, 60);
+}
+
+function ingestToast(msg, color) {
+  const t = Object.assign(document.createElement('div'), { textContent: msg });
+  t.style.cssText = `position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);padding:7px 16px;border-radius:20px;font-size:0.8rem;z-index:300;color:${color || 'var(--node-hub)'};max-width:420px;text-align:center;white-space:pre-line`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function updateIngestItemStatus(id, msg) {
+  const item = ingest.queue.find(i => i.id === id);
+  if (item) item.statusMsg = msg;
+  const el = document.querySelector(`.ingest-item[data-iid="${id}"] .ingest-item-status`);
+  if (el) el.textContent = msg;
+}
+
+function updateIngestBadge() {
+  const pending = ingest.queue.filter(i => ['pending','processing'].includes(i.status)).length;
+  const tabBtn = document.querySelector('.tab-btn[data-tab="ingest"]');
+  if (!tabBtn) return;
+  let badge = tabBtn.querySelector('.ingest-badge');
+  if (pending > 0) {
+    if (!badge) { badge = document.createElement('span'); badge.className = 'ingest-badge'; tabBtn.appendChild(badge); }
+    badge.textContent = pending;
+  } else {
+    badge?.remove();
+  }
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + 'B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + 'KB';
+  return (bytes / 1048576).toFixed(1) + 'MB';
+}
+
+function renderIngestQueue() {
+  const container = document.getElementById('ingest-queue');
+  if (!container) return;
+  if (!ingest.queue.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:0.75rem;text-align:center;padding:16px 0;">Queue is empty — drop files above</div>';
+    return;
+  }
+  const typeIcon = { markdown:'📄', pdf:'📑', html:'🌐', image:'🖼', audio:'🎤', structured:'📊', unknown:'📎' };
+  const statusColor = { pending:'var(--muted)', processing:'var(--accent-hi)', done:'var(--node-hub)', error:'var(--node-orph)' };
+  const statusIcon  = { pending:'○', processing:'⟳', done:'✓', error:'✗' };
+  container.innerHTML = ingest.queue.slice().reverse().map(item => {
+    const originCls = { inbox:'inbox', drop:'drop', recording:'rec', url:'url', clipboard:'drop' }[item.origin] || 'drop';
+    const sc = statusColor[item.status] || 'var(--muted)';
+    const si = statusIcon[item.status] || '?';
+    const label = item.statusMsg || item.status;
+    return `<div class="ingest-item" data-iid="${item.id}">
+      <div class="ingest-item-row">
+        <span class="ingest-type-icon">${typeIcon[item.type] || '📎'}</span>
+        <span class="ingest-item-name" title="${escHtml(item.name)}">${escHtml(item.name)}</span>
+        <span class="ingest-origin ${originCls}">${item.origin}</span>
+      </div>
+      <div class="ingest-item-row2">
+        <span class="ingest-item-status" style="color:${sc}">${si} ${escHtml(label)}</span>
+        <span class="ingest-item-size">${fmtSize(item.size)}</span>
+        ${item.status === 'pending' ? `<button class="btn btn-primary ingest-process-btn" onclick="processIngestItem(${item.id})">Process</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── File System helpers ───────────────────────────────────────────────────────
+
+async function ensureVaultDir(...segments) {
+  if (!vault.dirHandle) throw new Error('No folder access — open vault as folder to write files');
+  let handle = vault.dirHandle;
+  for (const seg of segments) handle = await handle.getDirectoryHandle(seg, { create: true });
+  return handle;
+}
+
+async function writeVaultFile(segments, content) {
+  // segments: ['_sources', '2026-04-05', 'article.md']
+  if (!vault.dirHandle) return false;
+  try {
+    const dirParts = segments.slice(0, -1);
+    const filename = segments[segments.length - 1];
+    const dirHandle = dirParts.length ? await ensureVaultDir(...dirParts) : vault.dirHandle;
+    const fh = await dirHandle.getFileHandle(filename, { create: true });
+    const w  = await fh.createWritable();
+    await w.write(content); await w.close();
+    return true;
+  } catch (e) { console.warn('writeVaultFile failed:', e); return false; }
+}
+
+async function readVaultFile(segments) {
+  if (!vault.dirHandle) return null;
+  try {
+    let handle = vault.dirHandle;
+    for (let i = 0; i < segments.length - 1; i++) handle = await handle.getDirectoryHandle(segments[i]);
+    const fh   = await handle.getFileHandle(segments[segments.length - 1]);
+    const file = await fh.getFile();
+    return await file.text();
+  } catch { return null; }
+}
+
+async function fileHash(file) {
+  const buf  = await file.arrayBuffer();
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Live vault update ─────────────────────────────────────────────────────────
+
+function addNoteToVault(path, content) {
+  const note = parseNote(path, content);
+  const key  = note.filename.toLowerCase();
+  vault.byPath.set(path, note);
+  if (!vault.byName.has(key)) vault.byName.set(key, note);
+  for (const alias of note.aliases) {
+    const ak = alias.toLowerCase();
+    if (!vault.byName.has(ak)) vault.byName.set(ak, note);
+  }
+  // Recompute edges + degrees for all notes (simple full rebuild)
+  const resolve = raw => {
+    const base = raw.toLowerCase().split('/').pop();
+    return vault.byName.get(base) ?? vault.byName.get(raw.toLowerCase()) ?? null;
+  };
+  vault.edges = [];
+  for (const n of vault.byPath.values()) {
+    for (const link of n.wikilinks) {
+      const target = resolve(link);
+      vault.edges.push({ source: n.filename.toLowerCase(), target: target ? target.filename.toLowerCase() : link.toLowerCase(), resolved: !!target });
+    }
+  }
+  for (const n of vault.byPath.values()) { n.inDeg = 0; n.outDeg = 0; }
+  for (const e of vault.edges) {
+    const s = vault.byName.get(e.source), t = vault.byName.get(e.target);
+    if (s) s.outDeg++;
+    if (t && e.resolved) t.inDeg++;
+  }
+  buildGraph();
+  buildNoteList('');
+  buildAuditPanel();
+  buildHeaderStats();
+}
+
+// ── Schema management ─────────────────────────────────────────────────────────
+
+async function loadSchema() {
+  const text = await readVaultFile(['_schema.md']);
+  if (text) { ingest.schema = text; return text; }
+  return null;
+}
+
+async function ensureSchema() {
+  if (await readVaultFile(['_schema.md'])) return;
+  const defaults = `# VaultMind Schema
+
+## Tag taxonomy
+- #project — work projects
+- #person — people
+- #tool — software and tools
+- #concept — ideas and frameworks
+- #meeting — meeting notes
+- #article — web articles and blog posts
+
+## Entity types to extract
+- People (name, role if mentioned, organization)
+- Organizations (name, domain)
+- Tools/Products (name, what it does)
+- Concepts (name, brief definition)
+
+## Naming conventions
+- Entity pages: Title Case (e.g., "Andrej Karpathy")
+- Concept pages: Title Case (e.g., "LLM Wiki Pattern")
+- Source notes: lowercase slugified (e.g., "karpathy-llm-wiki")
+
+## Summary style
+- 2-4 sentence summary at top of source notes
+- Entity pages: 1 paragraph overview, then bullet points per source
+
+## Custom instructions
+<!-- Add domain-specific rules here -->
+`;
+  await writeVaultFile(['_schema.md'], defaults);
+  addNoteToVault('_schema.md', defaults);
+}
+
+// ── Content extraction ────────────────────────────────────────────────────────
+
+async function extractPdfText(file) {
+  if (!ingest._pdfjsLoaded) {
+    updateIngestItemStatus(ingest._currentId, 'Loading pdf.js…');
+    ingest._pdfjsLoaded = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs');
+    ingest._pdfjsLoaded.GlobalWorkerOptions.workerSrc =
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs';
+  }
+  const pdfjs = ingest._pdfjsLoaded;
+  updateIngestItemStatus(ingest._currentId, 'Parsing PDF…');
+  const pdf  = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+  let text = '';
+  const maxPages = Math.min(pdf.numPages, 60);
+  for (let i = 1; i <= maxPages; i++) {
+    updateIngestItemStatus(ingest._currentId, `PDF page ${i}/${maxPages}…`);
+    const page = await pdf.getPage(i);
+    const tc   = await page.getTextContent();
+    text += tc.items.map(it => it.str).join(' ') + '\n';
+  }
+  return text.trim();
+}
+
+async function ensureTesseract() {
+  if (ingest._tesseractLoaded) return;
+  updateIngestItemStatus(ingest._currentId, 'Loading Tesseract…');
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = res; s.onerror = () => rej(new Error('Tesseract.js failed to load'));
+    document.head.appendChild(s);
+  });
+  ingest._tesseractLoaded = true;
+}
+
+async function extractOcrText(file) {
+  await ensureTesseract();
+  updateIngestItemStatus(ingest._currentId, 'OCR running…');
+  const result = await Tesseract.recognize(file, 'eng', {
+    logger: m => {
+      if (m.status === 'recognizing text')
+        updateIngestItemStatus(ingest._currentId, `OCR ${Math.round(m.progress * 100)}%…`);
+    }
+  });
+  return result.data.text;
+}
+
+async function ensureWhisperWorker() {
+  if (ingest.whisperWorker) return;
+  updateIngestItemStatus(ingest._currentId, 'Loading Whisper model…');
+  ingest.whisperWorker = makeWorker(WHISPER_WORKER_SRC);
+  ingest.whisperWorker.onerror = e => console.error('Whisper worker:', e.message);
+  await new Promise((res, rej) => {
+    ingest.whisperWorker.onmessage = ({ data }) => {
+      if (data.type === 'progress') {
+        const pct = data.data?.progress != null ? Math.round(data.data.progress) : 0;
+        if (pct > 0) updateIngestItemStatus(ingest._currentId, `Whisper loading ${pct}%…`);
+      } else if (data.type === 'ready') res();
+      else if (data.type === 'error') {
+        ingest.whisperWorker = null; // clear so next call can retry
+        rej(new Error(data.data));
+      }
+    };
+    ingest.whisperWorker.postMessage({ type: 'load' });
+  }).catch(e => { ingest.whisperWorker = null; throw e; });
+}
+
+async function extractAudioTranscript(file) {
+  await ensureWhisperWorker();
+  updateIngestItemStatus(ingest._currentId, 'Decoding audio…');
+  const arrayBuffer = await file.arrayBuffer();
+  const audioCtx    = new AudioContext({ sampleRate: 16000 });
+  const decoded     = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+  const pcm         = new Float32Array(decoded.getChannelData(0));
+  audioCtx.close();
+  updateIngestItemStatus(ingest._currentId, 'Transcribing…');
+  return new Promise((res, rej) => {
+    const id = 'wh-' + Math.random().toString(36).slice(2);
+    ingest.whisperWorker.onmessage = ({ data }) => {
+      if (data.id !== id) return;
+      if (data.type === 'transcript') res(data.text);
+      else if (data.type === 'error') rej(new Error(data.data));
+    };
+    ingest.whisperWorker.postMessage({ type: 'transcribe', audio: pcm.buffer, id }, [pcm.buffer]);
+  });
+}
+
+async function extractTextFromFile(file, fileType) {
+  if (fileType === 'markdown' || fileType === 'structured') return await file.text();
+  if (fileType === 'html') {
+    const text = await file.text();
+    const doc  = new DOMParser().parseFromString(text, 'text/html');
+    const el   = doc.querySelector('article, main, [role="main"]') || doc.body;
+    return (el.innerText || el.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  }
+  if (fileType === 'pdf')   return await extractPdfText(file);
+  if (fileType === 'image') return await extractOcrText(file);
+  if (fileType === 'audio') return await extractAudioTranscript(file);
+  return null;
+}
+
+// ── AI analysis ───────────────────────────────────────────────────────────────
+
+async function ingestCallAI(prompt, maxTokens) {
+  if (chat.mode === 'local' && chat.modelReady) {
+    return new Promise((res, rej) => {
+      let full = '';
+      const prev = chat.worker.onmessage;
+      chat.worker.onmessage = ({ data }) => {
+        if (data.type === 'token')    full += data.token;
+        else if (data.type === 'complete') { chat.worker.onmessage = prev; res(full); }
+        else if (data.type === 'error')    { chat.worker.onmessage = prev; rej(new Error(data.data)); }
+      };
+      chat.worker.postMessage({
+        type: 'generate',
+        messages: [
+          { role: 'system', content: 'You are a knowledge base assistant. Respond ONLY with a valid JSON object and nothing else — no preamble, no markdown fences.' },
+          { role: 'user', content: prompt },
+        ],
+        id: 'ingest-' + Date.now(),
+        maxTokens: maxTokens || 1000,
+      });
+    });
+  }
+  if (chat.mode === 'api') {
+    const apiKey   = document.getElementById('chat-api-key').value.trim();
+    const apiModel = document.getElementById('chat-api-model').value.trim();
+    const baseUrl  = document.getElementById('chat-api-url').value.trim();
+    if (!apiModel) throw new Error('No API model selected in Chat settings');
+    const resp = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+      body: JSON.stringify({
+        model: apiModel,
+        messages: [
+          { role: 'system', content: 'You are a knowledge base assistant. Respond ONLY with a valid JSON object and nothing else.' },
+          { role: 'user', content: prompt },
+        ],
+        stream: false, max_tokens: maxTokens || 1000,
+      }),
+    });
+    if (!resp.ok) throw new Error(`API ${resp.status}: ${resp.statusText}`);
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content || '';
+  }
+  throw new Error('No model available — load a WebGPU model or configure API mode first');
+}
+
+function parseIngestJSON(raw) {
+  const text = (raw || '').trim();
+  // 1. Direct parse
+  try { return JSON.parse(text); } catch {}
+  // 2. Code block extraction
+  const codeM = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (codeM) { try { return JSON.parse(codeM[1]); } catch {} }
+  // 3. Bare object extraction
+  const objM = text.match(/\{[\s\S]*\}/);
+  if (objM) {
+    try { return JSON.parse(objM[0]); } catch {}
+    // 4. JSON repair
+    const fixed = objM[0]
+      .replace(/,\s*([}\]])/g, '$1')
+      .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')
+      .replace(/:\s*'([^']*)'/g, ': "$1"');
+    try { return JSON.parse(fixed); } catch {}
+  }
+  // 5. Field-by-field regex fallback
+  const getStr = key => { const m = new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`, 'i').exec(text); return m ? m[1] : null; };
+  const getArr = key => {
+    const m = new RegExp(`"${key}"\\s*:\\s*(\\[[^\\]]*\\])`, 'i').exec(text);
+    if (!m) return [];
+    try { return JSON.parse(m[1].replace(/'/g, '"')); } catch { return []; }
+  };
+  return {
+    summary: getStr('summary') || text.slice(0, 300),
+    title: getStr('title'),
+    creator: getStr('creator'),
+    date_published: null,
+    tags: getArr('tags'),
+    entities: [],
+    new_pages: [],
+    page_updates: [],
+    _parseError: true,
+  };
+}
+
+function buildIndexSummary() {
+  const notes = Array.from(vault.byPath.values())
+    .filter(n => !n.path.startsWith('_'))
+    .slice(0, 120);
+  if (!notes.length) return '(empty vault)';
+  return notes.map(n => n.name).join('\n');
+}
+
+function buildIngestPrompt(item, schema, indexSummary) {
+  const schemaBlock = schema ? `SCHEMA:\n${schema}\n\n` : '';
+  const content = (item.content || '').slice(0, 4000) + (item.content?.length > 4000 ? '\n[truncated]' : '');
+  return `${schemaBlock}EXISTING VAULT NOTES (titles only, for link matching):
+${indexSummary}
+
+SOURCE DOCUMENT:
+Filename: ${item.name}
+Type: ${item.type}
+${item.meta?.url ? 'URL: ' + item.meta.url + '\n' : ''}
+${content}
+
+Respond with ONLY this JSON object (no other text):
+{
+  "summary": "2-4 sentence summary of this source",
+  "title": "suggested title for the source note",
+  "creator": "author name or null",
+  "date_published": "YYYY-MM-DD or null",
+  "tags": ["tag1", "tag2"],
+  "entities": [{"name": "...", "type": "person|organization|tool|place|concept", "brief": "one line description", "existing_page": "exact title from vault list if match else null", "new_information": "what this source adds"}],
+  "new_pages": [{"title": "Page Title", "page_type": "entity|concept", "content": "full markdown content including YAML frontmatter"}],
+  "page_updates": [{"title": "Existing Page Title", "append_content": "markdown to append to that page"}]
+}`;
+}
+
+// ── Source note builder ───────────────────────────────────────────────────────
+
+function buildSourceNote({ title, summary, creator, datePublished, sourceType, originalFilename, tags, entities, extractedText, meta }) {
+  const now     = new Date().toISOString();
+  const dateStr = now.slice(0, 10);
+  const entityNames = (entities || []).map(e => e.name).filter(Boolean);
+  let fm = `---\ntitle: "${(title || '').replace(/"/g, '\\"')}"\n`;
+  fm += `source_type: ${sourceType}\n`;
+  if (creator) fm += `creator: "${creator}"\n`;
+  fm += `date_ingested: ${now}\n`;
+  if (datePublished) fm += `date_published: ${datePublished}\n`;
+  if (originalFilename) fm += `original_filename: "${originalFilename}"\n`;
+  if (meta?.url) fm += `source_url: "${meta.url}"\n`;
+  if (tags?.length) fm += `tags: [${tags.join(', ')}]\n`;
+  if (entityNames.length) fm += `entities: [${entityNames.map(e => `"${e}"`).join(', ')}]\n`;
+  fm += `status: processed\nvaultmind_version: 1\n---\n\n`;
+
+  let body = '';
+  if (summary) body += `${summary}\n\n`;
+  if (extractedText && extractedText !== summary) {
+    body += `## Original content\n\n`;
+    const truncated = extractedText.slice(0, 6000);
+    body += truncated;
+    if (extractedText.length > 6000) body += `\n\n*[Content truncated — ${extractedText.length} chars total]*`;
+    body += '\n';
+  }
+  return fm + body;
+}
+
+async function appendIngestLog({ title, filename, sourceType, entities, tags, newPages, pageUpdates }) {
+  const ts = new Date().toISOString();
+  let entry = `\n## [${ts}] ingest | ${title}\n`;
+  entry += `- **Source:** ${filename} (${sourceType})\n`;
+  if (entities?.length) entry += `- **Entities extracted:** ${entities.length} — ${entities.slice(0, 5).map(e => e.name).join(', ')}${entities.length > 5 ? '…' : ''}\n`;
+  if (tags?.length) entry += `- **Tags:** ${tags.map(t => '#' + t).join(' ')}\n`;
+  if (newPages?.length) entry += `- **Notes proposed:** ${newPages.map(p => `[[${p.title}]]`).join(', ')}\n`;
+  if (pageUpdates?.length) entry += `- **Updates proposed:** ${pageUpdates.map(p => `[[${p.title}]]`).join(', ')}\n`;
+
+  const existing = (await readVaultFile(['_log.md'])) || '# Ingest Log\n';
+  await writeVaultFile(['_log.md'], existing + entry);
+}
+
+// ── Queue management ──────────────────────────────────────────────────────────
+
+async function addToIngestQueue(file, origin, meta) {
+  const fileType = detectFileType(file);
+  let hash;
+  try { hash = await fileHash(file); } catch { hash = file.name + file.size; }
+
+  if (ingest.processedHashes.has(hash)) {
+    ingestToast(`Already processed: ${file.name}`, 'var(--muted)');
+    return;
+  }
+
+  const item = {
+    id: ++_ingestIdSeq, file, name: file.name, type: fileType,
+    size: file.size, origin: origin || 'drop', status: 'pending',
+    statusMsg: 'pending', hash, content: null, result: null, meta: meta || {},
+  };
+  ingest.queue.push(item);
+  renderIngestQueue();
+  updateIngestBadge();
+
+  if (ingest.autoProcess) processIngestItem(item.id);
+}
+
+window.processIngestItem = async function(id) {
+  if (ingest.processing) { ingestToast('Already processing — please wait'); return; }
+  const item = ingest.queue.find(i => i.id === id);
+  if (!item || item.status !== 'pending') return;
+
+  // Block if chat is streaming
+  if (chat.streaming) { ingestToast('Chat is running — wait for it to finish first'); return; }
+
+  if (!vault.dirHandle) {
+    ingestToast('ZIP mode — files won\'t be saved to disk. Open vault as folder to persist notes.', 'var(--tag-col)');
+  }
+
+  ingest.processing = true;
+  ingest._currentId = id;
+  item.status = 'processing';
+  renderIngestQueue();
+
+  try {
+    // 1. Content extraction
+    updateIngestItemStatus(id, 'Extracting content…');
+    let extracted = item.content; // may have been pre-populated (e.g. clipboard)
+    if (extracted === null) {
+      try {
+        extracted = await extractTextFromFile(item.file, item.type);
+      } catch (e) {
+        extracted = null;
+        console.warn('Extraction error:', e);
+        ingestToast(`Extraction warning: ${e.message} — saving raw source`, 'var(--tag-col)');
+      }
+    }
+    item.content = extracted || '';
+
+    // 2. Load schema
+    const schema = await loadSchema();
+
+    // 3. AI analysis
+    let aiResult;
+    updateIngestItemStatus(id, 'Analyzing with AI…');
+    try {
+      const indexSummary = buildIndexSummary();
+      const prompt       = buildIngestPrompt(item, schema, indexSummary);
+      const aiRaw        = await ingestCallAI(prompt, 1000);
+      aiResult           = parseIngestJSON(aiRaw);
+    } catch (e) {
+      console.warn('AI analysis error:', e);
+      aiResult = { summary: null, title: null, creator: null, date_published: null,
+                   tags: [], entities: [], new_pages: [], page_updates: [], _aiError: e.message };
+    }
+    item.result = aiResult;
+
+    // 4. Write source note
+    updateIngestItemStatus(id, 'Writing source note…');
+    const title   = item.meta?.title || aiResult.title || item.name.replace(/\.[^.]+$/, '');
+    const dateDir = new Date().toISOString().slice(0, 10);
+    const slug    = slugify(title) || 'source-' + Date.now();
+    const srcPath = ['_sources', dateDir, slug + '.md'];
+    const srcContent = buildSourceNote({
+      title, summary: aiResult.summary,
+      creator: aiResult.creator, datePublished: aiResult.date_published,
+      sourceType: getSourceType(item.type), originalFilename: item.file.name,
+      tags: aiResult.tags || [], entities: aiResult.entities || [],
+      extractedText: item.content, meta: item.meta,
+    });
+    await writeVaultFile(srcPath, srcContent);
+    addNoteToVault(srcPath.join('/'), srcContent);
+    await ensureSchema();
+
+    // 5. Append to log
+    await appendIngestLog({
+      title, filename: item.file.name, sourceType: getSourceType(item.type),
+      entities: aiResult.entities || [], tags: aiResult.tags || [],
+      newPages: aiResult.new_pages || [], pageUpdates: aiResult.page_updates || [],
+    });
+
+    // 6. Remove from _inbox/ if applicable
+    if (item.origin === 'inbox' && ingest._inboxHandle) {
+      try { await ingest._inboxHandle.removeEntry(item.name); } catch {}
+    }
+
+    // 7. Mark hash processed
+    ingest.processedHashes.add(item.hash);
+
+    item.status = 'done';
+    item.statusMsg = 'done';
+    renderIngestQueue();
+    updateIngestBadge();
+    await saveIndexMd();
+
+    // 8. Show review panel if there are proposed notes
+    const proposed = [...(aiResult.new_pages || []), ...(aiResult.page_updates || [])];
+    if (proposed.length > 0) {
+      showIngestReview(title, proposed, srcPath.join('/'));
+    } else if (aiResult._aiError) {
+      ingestToast(`✓ ${title} — saved (AI unavailable: ${aiResult._aiError})`, 'var(--tag-col)');
+    } else {
+      ingestToast(`✓ ${title} — ingested`);
+    }
+
+  } catch (err) {
+    item.status = 'error';
+    item.statusMsg = err.message.slice(0, 60);
+    renderIngestQueue();
+    console.error('Ingest error:', err);
+    ingestToast('Ingest error: ' + err.message, 'var(--node-orph)');
+  } finally {
+    ingest.processing = false;
+    ingest._currentId = null;
+  }
+};
+
+window.processAllIngestItems = async function() {
+  const pending = ingest.queue.filter(i => i.status === 'pending');
+  for (const item of pending) {
+    if (item.status === 'pending') await processIngestItem(item.id);
+  }
+};
+
+// ── Review panel ──────────────────────────────────────────────────────────────
+
+function showIngestReview(sourceTitle, proposed, sourcePath) {
+  ingest._proposed          = proposed;
+  ingest._proposedAccepted  = new Set();
+  ingest._proposedSkipped   = new Set();
+
+  document.getElementById('ingest-review-title').textContent = `Review: ${sourceTitle}`;
+  document.getElementById('ingest-review-source-saved').textContent =
+    `✓ Source note saved to ${sourcePath}`;
+
+  const body = document.getElementById('ingest-review-body');
+  body.innerHTML = proposed.map((p, i) => {
+    const isNew   = p.content !== undefined;
+    const action  = isNew ? 'CREATE' : 'UPDATE';
+    const acls    = isNew ? 'action-create' : 'action-update';
+    const preview = isNew
+      ? (p.content || '').slice(0, 160) + (p.content?.length > 160 ? '…' : '')
+      : `Append to [[${p.title}]]:\n` + (p.append_content || '').slice(0, 120) + '…';
+    return `<div class="review-card" id="rc-${i}">
+      <div class="review-card-hdr">
+        <span class="review-action ${acls}">${action}</span>
+        <span class="review-card-title" title="${escHtml(p.title)}">${escHtml(p.title)}</span>
+        <span class="review-card-type">${p.page_type || ''}</span>
+      </div>
+      <div class="review-preview">${escHtml(preview)}</div>
+      <div class="review-actions" id="ra-${i}">
+        <button class="btn btn-primary btn-sm" onclick="ingestAccept(${i})">Accept</button>
+        <button class="btn btn-secondary btn-sm" onclick="ingestSkip(${i})">Skip</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('ingest-review').classList.add('open');
+}
+
+window.ingestAccept = async function(idx) {
+  const p = ingest._proposed[idx];
+  if (!p || ingest._proposedAccepted.has(idx)) return;
+  const raEl = document.getElementById('ra-' + idx);
+  const rcEl = document.getElementById('rc-' + idx);
+  try {
+    if (p.content !== undefined) {
+      // New page
+      const filename = p.title.replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80) + '.md';
+      await writeVaultFile([filename], p.content);
+      addNoteToVault(filename, p.content);
+    } else {
+      // Update existing page
+      const key  = p.title.toLowerCase().replace(/\.md$/i, '');
+      const note = vault.byName.get(key);
+      if (note && vault.dirHandle) {
+        const append = '\n\n' + (p.append_content || '');
+        note.body += append;
+        const hasFm = Object.keys(note.fm).length > 0;
+        let fileContent = note.body;
+        if (hasFm) {
+          const lines = ['---'];
+          for (const [k, v] of Object.entries(note.fm)) lines.push(`${k}: ${typeof v === 'string' ? JSON.stringify(v) : v}`);
+          lines.push('---', '');
+          fileContent = lines.join('\n') + '\n' + note.body;
+        }
+        const fh = await getFileHandleFromPath(vault.dirHandle, note.path);
+        const w  = await fh.createWritable();
+        await w.write(fileContent); await w.close();
+      } else if (!note) {
+        // Page doesn't exist yet — create it
+        const filename = p.title.replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80) + '.md';
+        const content  = `---\ntitle: "${p.title}"\nvaultmind_version: 1\n---\n\n${p.append_content || ''}`;
+        await writeVaultFile([filename], content);
+        addNoteToVault(filename, content);
+      }
+    }
+    ingest._proposedAccepted.add(idx);
+    if (rcEl) rcEl.style.opacity = '0.6';
+    if (raEl) raEl.innerHTML = '<span style="color:var(--node-hub);font-size:0.75rem">✓ Accepted</span>';
+    await saveIndexMd();
+  } catch (e) {
+    ingestToast('Write error: ' + e.message, 'var(--node-orph)');
+  }
+};
+
+window.ingestSkip = function(idx) {
+  ingest._proposedSkipped.add(idx);
+  const rcEl = document.getElementById('rc-' + idx);
+  const raEl = document.getElementById('ra-' + idx);
+  if (rcEl) rcEl.style.opacity = '0.4';
+  if (raEl) raEl.innerHTML = '<span style="color:var(--muted);font-size:0.75rem">Skipped</span>';
+};
+
+window.ingestAcceptAll = async function() {
+  for (let i = 0; i < ingest._proposed.length; i++) {
+    if (!ingest._proposedAccepted.has(i) && !ingest._proposedSkipped.has(i)) {
+      await ingestAccept(i);
+    }
+  }
+};
+
+// ── URL fetch ─────────────────────────────────────────────────────────────────
+
+async function fetchUrl(url) {
+  let resp;
+  try {
+    resp = await fetch(url, { signal: AbortSignal.timeout(12000) });
+  } catch (e) {
+    if (e instanceof TypeError) {
+      // CORS probe to distinguish network error from CORS block
+      try {
+        const probe = await fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(4000) });
+        if (probe.type === 'opaque')
+          throw new Error('CORS blocked — the site prevents direct access.\nUse the Paste button to copy-paste the article text instead.');
+      } catch (pe) {
+        if (pe.message.includes('CORS')) throw pe;
+      }
+    }
+    throw new Error('Could not reach URL: ' + e.message);
+  }
+  if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+  const text = await resp.text();
+  const doc  = new DOMParser().parseFromString(text, 'text/html');
+  const title = doc.querySelector('title')?.textContent?.trim() || url;
+  const content = doc.querySelector('article, main, [role="main"]') || doc.body;
+  const cleanText = (content.innerText || content.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  return { text: cleanText, title, url };
+}
+
+async function submitIngestUrl() {
+  const input = document.getElementById('ingest-url-input');
+  const url   = input.value.trim();
+  if (!url) return;
+  const btn = document.getElementById('ingest-url-submit');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const { text, title, url: fetchedUrl } = await fetchUrl(url);
+    const blob = new Blob([text], { type: 'text/plain' });
+    const file = new File([blob], (slugify(title) || 'web-article') + '.html', { type: 'text/html' });
+    await addToIngestQueue(file, 'url', { url: fetchedUrl, title });
+    input.value = '';
+    document.getElementById('ingest-url-row').style.display = 'none';
+  } catch (e) {
+    ingestToast('URL fetch failed:\n' + e.message, 'var(--node-orph)');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Fetch';
+  }
+}
+window.submitIngestUrl = submitIngestUrl;
+
+// ── Clipboard capture ─────────────────────────────────────────────────────────
+
+async function submitIngestClipboard() {
+  const ta   = document.getElementById('ingest-paste-text');
+  const text = ta.value.trim();
+  if (!text) return;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const file = new File([blob], 'clipboard-' + Date.now() + '.md', { type: 'text/plain' });
+  // Pre-populate content so no extraction step needed
+  const item_pre = { content: text };
+  await addToIngestQueue(file, 'clipboard');
+  // Patch content onto the queued item
+  const item = ingest.queue[ingest.queue.length - 1];
+  if (item) item.content = text;
+  ta.value = '';
+  document.getElementById('ingest-paste-row').style.display = 'none';
+}
+window.submitIngestClipboard = submitIngestClipboard;
+
+// ── Voice recording ───────────────────────────────────────────────────────────
+
+let _mediaRecorder = null, _recordingChunks = [];
+
+async function toggleVoiceRecording() {
+  const btn = document.getElementById('ingest-record-btn');
+  if (_mediaRecorder && _mediaRecorder.state !== 'inactive') {
+    _mediaRecorder.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _recordingChunks = [];
+    _mediaRecorder   = new MediaRecorder(stream);
+    _mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _recordingChunks.push(e.data); };
+    _mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(_recordingChunks, { type: 'audio/webm' });
+      const file = new File([blob], `voice-memo-${Date.now()}.webm`, { type: 'audio/webm' });
+      await addToIngestQueue(file, 'recording');
+      _mediaRecorder = null;
+      btn.textContent = '🎤 Record';
+      btn.classList.remove('ingest-btn-recording');
+    };
+    _mediaRecorder.start(1000);
+    btn.textContent = '⏹ Stop';
+    btn.classList.add('ingest-btn-recording');
+  } catch (e) {
+    ingestToast('Microphone error: ' + e.message, 'var(--node-orph)');
+  }
+}
+
+// ── _inbox/ watcher ───────────────────────────────────────────────────────────
+
+function updateInboxStatus(state) {
+  const strip = document.getElementById('ingest-inbox-strip');
+  const dot   = document.getElementById('inbox-dot');
+  const label = document.getElementById('inbox-label');
+  if (!strip) return;
+  if (state === 'watching') {
+    strip.style.display = '';
+    dot.className = 'inbox-dot watching';
+    label.textContent = 'Watching _inbox/';
+  } else if (state === 'throttled') {
+    dot.className = 'inbox-dot throttled';
+    label.textContent = '_inbox/ (throttled)';
+  } else {
+    strip.style.display = 'none';
+  }
+}
+
+async function scanInbox(processNew) {
+  if (!ingest._inboxHandle) return;
+  try {
+    const current = new Map();
+    for await (const [name, entry] of ingest._inboxHandle) {
+      if (entry.kind !== 'file') continue;
+      const file = await entry.getFile();
+      current.set(name, file);
+    }
+    if (!processNew) {
+      // Initial scan: just register known files without processing
+      for (const name of current.keys()) ingest.knownInbox.add(name);
+      return;
+    }
+    for (const [name, file] of current) {
+      if (ingest.knownInbox.has(name)) continue;
+      // Size stability check (avoid partially-written files)
+      const prevSize = ingest._inboxSizes.get(name);
+      if (prevSize === undefined) { ingest._inboxSizes.set(name, file.size); continue; }
+      if (prevSize !== file.size)  { ingest._inboxSizes.set(name, file.size); continue; }
+      // Stable — queue it
+      ingest.knownInbox.add(name);
+      ingest._inboxSizes.delete(name);
+      addToIngestQueue(file, 'inbox');
+    }
+  } catch (e) { console.warn('Inbox scan error:', e); }
+}
+
+async function startInboxWatcher() {
+  if (!vault.dirHandle || ingest.watchInterval) return;
+  try {
+    ingest._inboxHandle = await vault.dirHandle.getDirectoryHandle('_inbox', { create: true });
+  } catch (e) { console.warn('Could not create _inbox:', e); return; }
+  await scanInbox(false); // populate known set without processing
+  ingest.watchInterval = setInterval(() => {
+    // Detect tab throttling (background tab — Chrome throttles to ~1/min)
+    updateInboxStatus(document.hidden ? 'throttled' : 'watching');
+    scanInbox(true);
+  }, 5000);
+  updateInboxStatus('watching');
+}
+
+function stopInboxWatcher() {
+  clearInterval(ingest.watchInterval);
+  ingest.watchInterval = null;
+}
+
+// ── Initialisation ────────────────────────────────────────────────────────────
+
+async function initIngestSystem() {
+  // Show inbox strip only when folder mode is active
+  if (!vault.dirHandle) return;
+  await startInboxWatcher();
+  renderIngestQueue();
+}
+
+// ── Ingest tab event listeners ────────────────────────────────────────────────
+
+(function setupIngestListeners() {
+  // Drop zone — click to browse
+  const dz = document.getElementById('ingest-dropzone');
+  const fi = document.getElementById('ingest-file-input');
+  dz.addEventListener('click', () => fi.click());
+  fi.addEventListener('change', async e => {
+    for (const file of e.target.files) await addToIngestQueue(file, 'drop');
+    e.target.value = '';
+  });
+  // Drag-and-drop on drop zone
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', async e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    for (const file of e.dataTransfer.files) await addToIngestQueue(file, 'drop');
+  });
+
+  // Quick action buttons
+  document.getElementById('ingest-url-btn').addEventListener('click', () => {
+    const row = document.getElementById('ingest-url-row');
+    const visible = row.style.display !== 'none';
+    document.getElementById('ingest-url-row').style.display   = visible ? 'none' : '';
+    document.getElementById('ingest-paste-row').style.display = 'none';
+    if (!visible) document.getElementById('ingest-url-input').focus();
+  });
+  document.getElementById('ingest-record-btn').addEventListener('click', toggleVoiceRecording);
+  document.getElementById('ingest-paste-btn').addEventListener('click', () => {
+    const row = document.getElementById('ingest-paste-row');
+    const visible = row.style.display !== 'none';
+    document.getElementById('ingest-paste-row').style.display = visible ? 'none' : '';
+    document.getElementById('ingest-url-row').style.display   = 'none';
+    if (!visible) document.getElementById('ingest-paste-text').focus();
+  });
+
+  // URL submit
+  document.getElementById('ingest-url-submit').addEventListener('click', submitIngestUrl);
+  document.getElementById('ingest-url-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitIngestUrl();
+  });
+
+  // Clipboard submit
+  document.getElementById('ingest-paste-submit').addEventListener('click', submitIngestClipboard);
+
+  // Auto-process toggle
+  document.getElementById('ingest-auto-cb').addEventListener('change', e => {
+    ingest.autoProcess = e.target.checked;
+  });
+
+  // Process All
+  document.getElementById('ingest-process-all-btn').addEventListener('click', processAllIngestItems);
+
+  // Review overlay close / accept-all
+  document.getElementById('ingest-review-close').addEventListener('click', () =>
+    document.getElementById('ingest-review').classList.remove('open'));
+  document.getElementById('ingest-review-done').addEventListener('click', () =>
+    document.getElementById('ingest-review').classList.remove('open'));
+  document.getElementById('ingest-review-accept-all').addEventListener('click', ingestAcceptAll);
+  document.getElementById('ingest-review').addEventListener('click', e => {
+    if (e.target === document.getElementById('ingest-review'))
+      document.getElementById('ingest-review').classList.remove('open');
+  });
+
+  // Render empty queue state on load
+  renderIngestQueue();
+})();
+
+// ── MOC generation button ─────────────────────────────────────────────────────
+document.getElementById('moc-gen-btn').addEventListener('click', generateMocForCluster);
 
 // ── Help modal ────────────────────────────────────────────────────────────────
 document.getElementById('btn-help').addEventListener('click', () => {
