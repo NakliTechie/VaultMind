@@ -4573,6 +4573,7 @@ window.ingestAcceptAll = async function() {
       await ingestAccept(i);
     }
   }
+  document.getElementById('ingest-review').classList.remove('open');
 };
 
 // ── URL fetch ─────────────────────────────────────────────────────────────────
