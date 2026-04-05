@@ -4502,38 +4502,154 @@ function buildIndexSummary() {
 function buildIngestPrompt(item, schema, indexSummary) {
   const schemaBlock = schema ? `SCHEMA:\n${schema}\n\n` : '';
   const content = (item.content || '').slice(0, 4000) + (item.content?.length > 4000 ? '\n[truncated]' : '');
-  return `${schemaBlock}EXISTING VAULT PAGES (use these exact titles in [[wikilinks]]):
-${indexSummary}
 
-SOURCE DOCUMENT:
-Filename: ${item.name}
-Type: ${item.type}
-${item.meta?.url ? 'URL: ' + item.meta.url + '\n' : ''}
-${content}
+  // ── Content quality gate ───────────────────────────────────────────────────
+  const wordCount = (item.content || '').trim().split(/\s+/).filter(Boolean).length;
+  const sparse    = wordCount < 100;
 
-INSTRUCTIONS:
-1. Extract entities (people, tools, concepts, places, orgs) mentioned in the source.
-2. For each entity: if an existing vault page matches (see list above), record it in existing_page and propose a page_update. If no page exists and it is worth its own note, propose a new_page.
-3. In ALL generated page content, use [[wikilinks]] to link to related entities and to other existing vault pages where relevant. Every generated page should link to at least one other page.
-4. Generated pages must link back to this source using [[your title field value]] as a wikilink — e.g. if title is "LLM Wiki", write [[LLM Wiki]] in the page content.
-5. Prefer linking to existing pages over creating redundant new ones.
+  // ── Mode detection ─────────────────────────────────────────────────────────
+  const t = (item.type || 'text').toLowerCase();
+  const mode = sparse         ? 'sparse'
+             : t === 'audio'  ? 'voice'
+             : t === 'url'    ? 'article'
+             : t === 'pdf'    ? 'document'
+             : t === 'image'  ? 'image'
+             : 'note';
 
-Respond with ONLY this JSON object (no other text):
-{
-  "summary": "2-4 sentence summary of this source",
+  // ── Critical rules (constraint-first) ─────────────────────────────────────
+  const criticalRules = `CRITICAL RULES — read before anything else:
+- Every generated page MUST [[wikilink]] back to this source note using its exact suggested title.
+- Copy vault page titles character-for-character when writing [[wikilinks]] — never paraphrase them.
+- Prefer updating an existing page over creating a redundant new one.
+- Never invent entities that are not explicitly present in the source content.`;
+
+  // ── Mode-specific instructions + JSON schema ───────────────────────────────
+  let instructions, jsonSchema;
+
+  if (mode === 'sparse') {
+    instructions = `This content is very short (under 100 words). Write a brief capture note only.
+- Do NOT extract entities or propose new pages — the content is too thin to support them.
+- Summarise faithfully what little is here.`;
+    jsonSchema = `{
+  "summary": "1-2 sentence capture of what this contains",
+  "title": "suggested title for the source note",
+  "creator": null,
+  "date_published": null,
+  "tags": ["captured"],
+  "entities": [],
+  "new_pages": [],
+  "page_updates": []
+}`;
+
+  } else if (mode === 'voice') {
+    instructions = `This is a voice memo or audio transcript — informal, first-person speech.
+- Focus on: key ideas, decisions made, and concrete action items.
+- Extract named entities only if clearly and explicitly stated (people, tools, projects by name).
+- Do NOT create entity pages for vague references like "that tool" or "someone at work".
+- Capture intent and outcome — not a word-for-word transcription summary.`;
+    jsonSchema = `{
+  "summary": "2-3 sentence summary of the key ideas and intent",
+  "title": "suggested title for the source note",
+  "creator": null,
+  "date_published": null,
+  "tags": ["voice-memo"],
+  "action_items": ["specific action or decision captured from the memo"],
+  "entities": [{"name": "...", "type": "person|organization|tool|place|concept", "brief": "one line", "existing_page": "exact vault page title if match else null", "new_information": "what this memo adds"}],
+  "new_pages": [{"title": "Page Title", "page_type": "entity|concept", "content": "full markdown body (no frontmatter) with [[wikilinks]] back to source and related pages"}],
+  "page_updates": [{"title": "Existing Page Title", "append_content": "markdown paragraph with [[wikilinks]]"}]
+}`;
+
+  } else if (mode === 'article') {
+    instructions = `This is a web article or URL.
+- Capture the author's core argument or thesis — not just topic keywords.
+- Extract all significant entities (people, orgs, tools, concepts, places).
+- For each entity, check the vault list above first; prefer a page_update over a new_page.
+- Proposed pages should reflect what this specific article says, not general knowledge.`;
+    jsonSchema = `{
+  "summary": "2-4 sentence summary capturing the main argument or finding",
   "title": "suggested title for the source note",
   "creator": "author name or null",
   "date_published": "YYYY-MM-DD or null",
   "tags": ["tag1", "tag2"],
-  "entities": [{"name": "...", "type": "person|organization|tool|place|concept", "brief": "one line description", "existing_page": "exact vault page title if match else null", "new_information": "what this source adds"}],
-  "new_pages": [{"title": "Page Title", "page_type": "entity|concept", "content": "full markdown body (no frontmatter) with [[wikilinks]] to related pages and back to the source note"}],
-  "page_updates": [{"title": "Existing Page Title", "append_content": "markdown paragraph to append, with [[wikilinks]] back to the source note and related pages"}]
+  "entities": [{"name": "...", "type": "person|organization|tool|place|concept", "brief": "one line", "existing_page": "exact vault page title if match else null", "new_information": "what this article adds"}],
+  "new_pages": [{"title": "Page Title", "page_type": "entity|concept", "content": "full markdown body (no frontmatter) with [[wikilinks]] back to source and related pages"}],
+  "page_updates": [{"title": "Existing Page Title", "append_content": "markdown paragraph with [[wikilinks]]"}]
 }`;
+
+  } else if (mode === 'document') {
+    instructions = `This is a PDF or formal document.
+- Extract key arguments, conclusions, and methodology — not just named entities.
+- If the document has clear sections, reflect that structure in the summary.
+- Prioritise concepts and findings; named people only if central to the work.
+- Proposed pages should focus on what this document uniquely contributes.`;
+    jsonSchema = `{
+  "summary": "2-4 sentence summary of the document's purpose, argument, and conclusions",
+  "title": "suggested title for the source note",
+  "creator": "author name or null",
+  "date_published": "YYYY-MM-DD or null",
+  "tags": ["tag1", "tag2"],
+  "entities": [{"name": "...", "type": "person|organization|tool|place|concept", "brief": "one line", "existing_page": "exact vault page title if match else null", "new_information": "what this document adds"}],
+  "new_pages": [{"title": "Page Title", "page_type": "entity|concept", "content": "full markdown body (no frontmatter) with [[wikilinks]] back to source and related pages"}],
+  "page_updates": [{"title": "Existing Page Title", "append_content": "markdown paragraph with [[wikilinks]]"}]
+}`;
+
+  } else if (mode === 'image') {
+    instructions = `This is OCR text extracted from an image — it may be incomplete, noisy, or fragmented.
+- Extract only what is clearly and unambiguously present in the text. Do not infer.
+- If the text is too fragmented to summarise meaningfully, say so honestly in the summary.
+- Keep new_pages minimal — only propose a page if an entity is fully and explicitly named.`;
+    jsonSchema = `{
+  "summary": "1-3 sentence description of what the image appears to contain",
+  "title": "suggested title for the source note",
+  "creator": null,
+  "date_published": null,
+  "tags": ["image", "ocr"],
+  "entities": [{"name": "...", "type": "person|organization|tool|place|concept", "brief": "one line", "existing_page": "exact vault page title if match else null", "new_information": "what this adds"}],
+  "new_pages": [{"title": "Page Title", "page_type": "entity|concept", "content": "full markdown body (no frontmatter) with [[wikilinks]] back to source"}],
+  "page_updates": [{"title": "Existing Page Title", "append_content": "markdown paragraph with [[wikilinks]]"}]
+}`;
+
+  } else {
+    // mode === 'note' — existing .md / .txt / .csv / clipboard paste
+    instructions = `This is an existing note, text file, or structured content.
+- It may already be well-organised. Focus on linking to the vault, not rewriting.
+- Extract entities mentioned and check if they match existing vault pages first.
+- Propose new pages only for entities clearly central to the content.
+- Do not duplicate content that is likely already in the vault.`;
+    jsonSchema = `{
+  "summary": "2-3 sentence summary of what this note covers",
+  "title": "suggested title for the source note",
+  "creator": null,
+  "date_published": null,
+  "tags": ["tag1"],
+  "entities": [{"name": "...", "type": "person|organization|tool|place|concept", "brief": "one line", "existing_page": "exact vault page title if match else null", "new_information": "what this adds"}],
+  "new_pages": [{"title": "Page Title", "page_type": "entity|concept", "content": "full markdown body (no frontmatter) with [[wikilinks]] back to source and related pages"}],
+  "page_updates": [{"title": "Existing Page Title", "append_content": "markdown paragraph with [[wikilinks]]"}]
+}`;
+  }
+
+  return `${schemaBlock}${criticalRules}
+
+EXISTING VAULT PAGES (use these exact titles in [[wikilinks]]):
+${indexSummary}
+
+SOURCE DOCUMENT:
+Filename: ${item.name}
+Type: ${item.type} (mode: ${mode})${item.meta?.url ? '\nURL: ' + item.meta.url : ''}
+
+CONTENT:
+${content}
+
+INSTRUCTIONS:
+${instructions}
+
+Respond with ONLY this JSON object (no other text):
+${jsonSchema}`;
 }
 
 // ── Source note builder ───────────────────────────────────────────────────────
 
-function buildSourceNote({ title, summary, creator, datePublished, sourceType, originalFilename, tags, entities, extractedText, meta }) {
+function buildSourceNote({ title, summary, creator, datePublished, sourceType, originalFilename, tags, entities, actionItems, extractedText, meta }) {
   const now     = new Date().toISOString();
   const dateStr = now.slice(0, 10);
   const entityNames = (entities || []).map(e => e.name).filter(Boolean);
@@ -4550,6 +4666,11 @@ function buildSourceNote({ title, summary, creator, datePublished, sourceType, o
 
   let body = '';
   if (summary) body += `${summary}\n\n`;
+
+  // Action items (voice memos only)
+  if (actionItems?.length) {
+    body += `**Action items:**\n${actionItems.map(a => `- [ ] ${a}`).join('\n')}\n\n`;
+  }
 
   // Deterministic wikilinks — never orphaned regardless of AI output
   if (entityNames.length) {
@@ -4659,7 +4780,7 @@ window.processIngestItem = async function(id) {
     } catch (e) {
       console.warn('AI analysis error:', e);
       aiResult = { summary: null, title: null, creator: null, date_published: null,
-                   tags: [], entities: [], new_pages: [], page_updates: [], _aiError: e.message };
+                   tags: [], entities: [], action_items: [], new_pages: [], page_updates: [], _aiError: e.message };
     }
     item.result = aiResult;
 
@@ -4674,6 +4795,7 @@ window.processIngestItem = async function(id) {
       creator: aiResult.creator, datePublished: aiResult.date_published,
       sourceType: getSourceType(item.type), originalFilename: item.file.name,
       tags: aiResult.tags || [], entities: aiResult.entities || [],
+      actionItems: aiResult.action_items || [],
       extractedText: item.content, meta: item.meta,
     });
     await writeVaultFile(srcPath, srcContent);
