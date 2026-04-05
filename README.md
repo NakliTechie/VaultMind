@@ -11,6 +11,7 @@ Drop your Obsidian vault (as a folder or a ZIP) and get:
 - **Force-directed graph** — every note is a node, every `[[wikilink]]` is an edge. Clusters emerge automatically. Switch between 2D and 3D perspective at any time.
 - **Ingestion pipeline** — drop files, paste URLs, record voice memos, or save to `_inbox/`. The AI extracts entities, writes source notes, proposes linked entity pages, and updates the graph live.
 - **AI chat** — ask questions about your vault. Context is scoped to the selected note and its 1-hop neighbours (micro-RAG). Works with a local WebGPU model (Gemma 4, Qwen, SmolLM) or any OpenAI-compatible API.
+- **Persistent semantic index** — embeddings are saved to IndexedDB after the first run. Subsequent loads only re-embed notes that changed. A 500-note vault goes from "indexing…" to "cached ✓" in under a second.
 - **Wiki maintenance** — gap analysis, staleness detection, and AI-powered contradiction scanning keep your knowledge base consistent over time.
 - **Full-text search** — multi-word, frequency-ranked search across all note bodies with highlighted snippets.
 - **Note editor** — edit any note in place with a markdown toolbar. Autosave to disk, unsaved-draft recovery, Ctrl+B/I/S shortcuts.
@@ -66,7 +67,8 @@ PDF.js, Tesseract, and Whisper are all lazy-loaded on first use — zero overhea
 3. **Source note** — written to `_sources/YYYY-MM-DD/` with full Obsidian frontmatter; entity wikilinks injected deterministically
 4. **Review** — proposed entity/concept pages shown for Accept / Skip. *Accept All* closes the panel automatically
 5. **Live update** — accepted pages written to vault root; graph re-renders with new nodes and edges immediately
-6. **Log** — `_log.md` appended; `_index.md` rebuilt
+6. **Incremental re-index** — new notes are embedded and added to the semantic index in the same session, no reload needed
+7. **Log** — `_log.md` appended; `_index.md` rebuilt
 
 SHA-256 deduplication prevents the same file being processed twice. Done items fade from the queue after 30 s; errors stay until reload.
 
@@ -86,6 +88,22 @@ my-vault/
 ├── WebGPU.md                ← concept page (AI-created)
 └── ...                      ← your existing notes (untouched)
 ```
+
+---
+
+## Semantic index (RAG)
+
+VaultMind embeds every note using `all-MiniLM-L6-v2` (384-dim vectors, WASM) and stores the result in **IndexedDB** — so the index persists across browser sessions.
+
+| Behaviour | Detail |
+|---|---|
+| **First load** | All notes chunked (800 chars, 150-char overlap) and embedded. Progress shown live. |
+| **Subsequent loads** | Only notes whose content changed are re-embedded. Unchanged notes load from cache instantly. |
+| **Status indicator** | Shows `RAG ready — N chunks (cached ✓)` when fully cached, or `Indexing… X/Y new chunks (Z cached)` during a partial update. |
+| **re-index link** | Appears next to the status. Click to wipe the cache and embed from scratch. |
+| **After ingest** | Accepting new entity pages triggers an incremental re-index — new notes are searchable immediately. |
+
+**Micro-RAG** — when a note is selected, context is scoped to that note and its 1-hop neighbours before expanding to the full vault. Cosine similarity threshold: 0.2 (local) / 0.25 (global).
 
 ---
 
@@ -146,7 +164,7 @@ Expand *System prompt* inside chat Settings to customise the AI's persona and in
 | Concern | Solution |
 |---|---|
 | LLM inference | [Transformers.js v4](https://huggingface.co/docs/transformers.js) — WebGPU (causal + multimodal) |
-| Embeddings (RAG) | all-MiniLM-L6-v2 via WASM — runs alongside the LLM with no contention |
+| Embeddings (RAG) | all-MiniLM-L6-v2 via WASM — persistent index stored in IndexedDB, incremental updates |
 | PDF extraction | pdf.js (lazy-loaded from CDN) |
 | OCR | Tesseract.js (lazy-loaded from CDN) |
 | Audio transcription | Whisper WASM via Transformers.js (lazy-loaded) |

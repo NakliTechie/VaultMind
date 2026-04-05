@@ -1088,13 +1088,15 @@ body {
       <div class="help-panel" id="hp-rag">
         <p>VaultMind uses <strong>Retrieval-Augmented Generation (RAG)</strong> to ground AI answers in your actual notes — not the model's training data.</p>
         <ul>
-          <li><strong>How it works</strong> — notes are split into chunks and embedded with <code>all-MiniLM-L6-v2</code> running in the browser via WASM. Each chunk gets a semantic vector.</li>
+          <li><strong>How it works</strong> — notes are split into 800-character chunks and embedded with <code>all-MiniLM-L6-v2</code> running in the browser via WASM. Each chunk gets a 384-dim semantic vector.</li>
+          <li><strong>Persistent index</strong> — embeddings are saved to IndexedDB after the first run. On subsequent loads, only notes whose content changed are re-embedded. Everything else loads from cache instantly.</li>
           <li><strong>Micro-RAG on node click</strong> — selecting a node pre-warms a context window scoped to that note and its direct neighbours only.</li>
           <li><strong>Full-vault fallback</strong> — if no relevant local chunks exist, search expands to the entire vault.</li>
           <li><strong>Cosine similarity</strong> — chunks ranked by semantic closeness to your question. Only above-threshold chunks are included.</li>
-          <li><strong>Embedding runs once</strong> per session — re-opening the vault re-embeds.</li>
+          <li><strong>Live updates</strong> — accepting new notes via the ingest pipeline triggers an incremental re-index in the same session.</li>
+          <li><strong>re-index link</strong> — appears next to the RAG status line. Click it to wipe the cache and embed everything from scratch if needed.</li>
         </ul>
-        <p style="margin-top:6px"><strong>Tip:</strong> click a note before asking for the most focused answer. The ingest pipeline also benefits from RAG — entity extraction uses the vault index to match existing pages.</p>
+        <p style="margin-top:6px"><strong>Tip:</strong> click a note before asking for the most focused answer. The status line shows <em>cached ✓</em> when the full index was loaded from disk — no wait needed.</p>
       </div>
 
       <!-- Editor -->
