@@ -518,7 +518,7 @@ body {
 
 /* ── Help button ─────────────────────────────────────────────────────────────*/
 .help-btn {
-  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; margin-right: 8px;
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
   border: 1.5px solid var(--border); background: var(--surface2);
   color: var(--muted); font-size: 0.8rem; font-weight: 700; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
@@ -626,11 +626,11 @@ body {
 <!-- ── App ────────────────────────────────────────── -->
 <div id="app">
   <header id="header">
-    <button class="help-btn" id="btn-help" title="Help">?</button>
     <span class="header-brand">VaultMind</span>
     <span style="color:var(--border)">│</span>
     <span class="header-vault" id="vault-name"></span>
-    <div class="header-stats" id="header-stats"></div>
+    <button class="help-btn" id="btn-help" title="Help" style="margin-left:auto;margin-right:12px">?</button>
+    <div class="header-stats" id="header-stats" style="margin-left:0"></div>
     <button class="btn btn-sm btn-secondary" id="btn-change" style="margin-left:8px">Change Vault</button>
   </header>
   <div id="body">
