@@ -976,7 +976,10 @@ body {
         <div class="progress-bar"><div class="progress-fill" id="chat-prog-fill" style="width:0%"></div></div>
       </div>
       <!-- RAG status -->
-      <div class="chat-status" id="chat-rag-status" style="display:none;font-size:0.68rem"></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="chat-status" id="chat-rag-status" style="display:none;font-size:0.68rem;flex:1"></div>
+        <button id="rag-clear-btn" title="Clear embedding cache and re-index everything" style="display:none;font-size:0.65rem;background:none;border:none;color:var(--muted);cursor:pointer;padding:0 2px;text-decoration:underline dotted;white-space:nowrap">re-index</button>
+      </div>
       <!-- Messages -->
       <div class="chat-messages" id="chat-messages">
         <div data-placeholder style="text-align:center;color:var(--muted);font-size:0.75rem;margin-top:24px;line-height:1.7">Load a model or set an API key,<br>then ask anything about your vault.</div>
@@ -3258,28 +3261,147 @@ function embedTexts(texts) {
   return rag.embedQueue;
 }
 
-async function ragIndexVault() {
+// ── RAG index persistence (IndexedDB) ────────────────────────────────────────
+
+const RAG_DB_NAME = 'VaultMindRAG';
+const RAG_STORE   = 'ragIndex';
+
+function openRagDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(RAG_DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(RAG_STORE);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+async function loadRagCache(vaultName) {
+  try {
+    const db = await openRagDB();
+    return await new Promise((res, rej) => {
+      const tx  = db.transaction(RAG_STORE, 'readonly');
+      const req = tx.objectStore(RAG_STORE).get(vaultName);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror   = () => rej(req.error);
+    });
+  } catch { return null; }
+}
+
+async function saveRagCache(vaultName, chunks, fingerprints) {
+  try {
+    const db = await openRagDB();
+    await new Promise((res, rej) => {
+      const tx  = db.transaction(RAG_STORE, 'readwrite');
+      const req = tx.objectStore(RAG_STORE).put({ chunks, fingerprints, savedAt: Date.now() }, vaultName);
+      req.onsuccess = () => res();
+      req.onerror   = () => rej(req.error);
+    });
+  } catch (e) { console.warn('RAG cache save failed:', e); }
+}
+
+async function clearRagCache(vaultName) {
+  try {
+    const db = await openRagDB();
+    await new Promise((res, rej) => {
+      const tx  = db.transaction(RAG_STORE, 'readwrite');
+      const req = tx.objectStore(RAG_STORE).delete(vaultName);
+      req.onsuccess = () => res();
+      req.onerror   = () => rej(req.error);
+    });
+  } catch (e) { console.warn('RAG cache clear failed:', e); }
+}
+
+// Cheap content fingerprint — no async, fast enough for change detection
+function noteFingerprint(note) {
+  return note.body.length + '|' + note.body.slice(0, 200);
+}
+
+async function ragIndexVault(forceRebuild = false) {
   if (rag.indexing || !rag.ready || !vault.byPath.size) return;
   rag.indexing = true;
-  const ragEl = document.getElementById('chat-rag-status');
+  const ragEl    = document.getElementById('chat-rag-status');
+  const clearBtn = document.getElementById('rag-clear-btn');
   ragEl.style.display = '';
+  clearBtn.style.display = 'none';
+  ragEl.textContent = 'Checking index cache…';
+
+  const vaultName = vault.vaultName;
+  const notes     = [...vault.byPath.values()];
+
+  // Current fingerprints for all notes
+  const currentFPs = {};
+  for (const note of notes) currentFPs[note.filename.toLowerCase()] = noteFingerprint(note);
+
+  // Load persisted cache (skip on force rebuild)
+  const cache      = forceRebuild ? null : await loadRagCache(vaultName);
+  const cachedFPs  = cache?.fingerprints || {};
+  const cachedChunks = cache?.chunks    || [];
+
+  // Notes that changed or are new
+  const needEmbed = notes.filter(n => {
+    const id = n.filename.toLowerCase();
+    return currentFPs[id] !== cachedFPs[id];
+  });
+
+  // Keep chunks for notes that haven't changed and still exist
+  const currentIds = new Set(Object.keys(currentFPs));
+  const keepChunks = cachedChunks.filter(c =>
+    currentIds.has(c.noteId) && currentFPs[c.noteId] === cachedFPs[c.noteId]
+  );
+
+  if (needEmbed.length === 0) {
+    // Full cache hit — no embedding needed
+    rag.chunks   = keepChunks;
+    rag.indexing = false;
+    ragEl.textContent = `RAG ready — ${rag.chunks.length} chunks (cached ✓)`;
+    clearBtn.style.display = '';
+    return;
+  }
+
+  // Build raw chunks only for changed/new notes
   const rawChunks = [];
-  for (const note of vault.byPath.values()) {
+  for (const note of needEmbed) {
     for (const text of chunkText(note.body.slice(0, 3000))) {
       rawChunks.push({ text, noteId: note.filename.toLowerCase(), noteName: note.name });
     }
   }
-  const BATCH = 32;
-  const allVecs = [];
+
+  const nCached = keepChunks.length;
+  const total   = rawChunks.length;
+  const BATCH   = 32;
+  const newVecs = [];
+
   for (let i = 0; i < rawChunks.length; i += BATCH) {
-    ragEl.textContent = `Indexing… ${Math.min(i + BATCH, rawChunks.length)}/${rawChunks.length} chunks`;
+    const done = Math.min(i + BATCH, total);
+    ragEl.textContent = nCached
+      ? `Indexing… ${done}/${total} new chunks (${nCached} cached)`
+      : `Indexing… ${done}/${total} chunks`;
     const vecs = await embedTexts(rawChunks.slice(i, i + BATCH).map(c => c.text));
-    allVecs.push(...vecs);
+    newVecs.push(...vecs);
   }
-  rag.chunks   = rawChunks.map((c, i) => ({ ...c, embedding: allVecs[i] }));
+
+  const newChunks = rawChunks.map((c, i) => ({ ...c, embedding: newVecs[i] }));
+  rag.chunks   = [...keepChunks, ...newChunks];
   rag.indexing = false;
   ragEl.textContent = `RAG ready — ${rag.chunks.length} chunks`;
+  clearBtn.style.display = '';
+
+  // Merge fingerprints: update changed notes, drop deleted ones
+  const updatedFPs = { ...cachedFPs };
+  for (const note of needEmbed) updatedFPs[note.filename.toLowerCase()] = currentFPs[note.filename.toLowerCase()];
+  for (const id of Object.keys(updatedFPs)) { if (!currentIds.has(id)) delete updatedFPs[id]; }
+
+  // Persist in background — don't block the UI
+  saveRagCache(vaultName, rag.chunks, updatedFPs);
 }
+
+// Wire up the re-index button
+document.getElementById('rag-clear-btn').addEventListener('click', async () => {
+  rag.chunks   = [];
+  rag.indexing = false;
+  await clearRagCache(vault.vaultName);
+  ragIndexVault(true);
+});
 
 async function ragSearch(query, topK = 5) {
   if (!rag.ready || !rag.chunks.length) return [];
@@ -4702,6 +4824,8 @@ window.ingestAccept = async function(idx) {
     if (rcEl) rcEl.style.opacity = '0.6';
     if (raEl) raEl.innerHTML = '<span style="color:var(--node-hub);font-size:0.75rem">✓ Accepted</span>';
     await saveIndexMd();
+    // Incrementally update the RAG index with the new note
+    if (rag.ready && !rag.indexing) ragIndexVault();
   } catch (e) {
     ingestToast('Write error: ' + e.message, 'var(--node-orph)');
   }
