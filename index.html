@@ -1005,6 +1005,8 @@ body {
 
     <div class="help-tabs">
       <button class="help-tab active" data-tab="graph">🕸 Graph</button>
+      <button class="help-tab" data-tab="ingest">📥 Ingest</button>
+      <button class="help-tab" data-tab="audit">🔎 Audit</button>
       <button class="help-tab" data-tab="chat">💬 Chat</button>
       <button class="help-tab" data-tab="rag">🧩 RAG</button>
       <button class="help-tab" data-tab="editor">✏️ Editor</button>
@@ -1021,54 +1023,86 @@ body {
           <li><strong>Drag a node</strong> — pin it; drag away to move it freely.</li>
           <li><strong>Scroll / pinch</strong> — smooth zoom centred on cursor.</li>
           <li><strong>Drag canvas</strong> (2D) — pan the view.</li>
-          <li><strong>3D button</strong> — switch to 3D perspective. Drag to rotate on all axes; the blob stays centred.</li>
-          <li><strong>⏸ Pause</strong> — freeze the simulation.</li>
-          <li><strong>⊞ Fit</strong> — reset zoom to fit all nodes.</li>
-          <li><strong>+ / −</strong> — add / remove a random connection (demo).</li>
+          <li><strong>3D button</strong> — switch to 3D perspective. Drag to rotate on all axes.</li>
+          <li><strong>⏸ Pause</strong> — freeze the simulation. <strong>⊡ Fit</strong> — reset zoom.</li>
+          <li><strong>⬡ Generate MOC for neighborhood</strong> — appears when you select a connected note. The AI reads that note and all its direct links, groups them into sections, and writes a Map of Content page to the vault root.</li>
         </ul>
-        <p style="margin-top:8px"><strong>Node colours</strong> reflect clusters detected by the force layout. Red = orphan (no links). Pink = MOC.</p>
+        <p style="margin-top:8px"><strong>Node colours:</strong> pink = MOC · red = orphan (no links) · gold = selected. Colour families reflect link clusters.</p>
+      </div>
+
+      <!-- Ingest -->
+      <div class="help-panel" id="hp-ingest">
+        <p>Turn VaultMind from a read-only explorer into a <strong>vault builder</strong>. Drop raw content in; the AI compiles it into structured, interlinked Obsidian notes written directly to disk — the Karpathy "LLM Wiki" pattern, in the browser.</p>
+        <ul>
+          <li><strong>Drop zone</strong> — drag files into the 📥 tab. Supported: <code>.md .txt .pdf .html .csv .json</code>, images (OCR via Tesseract), audio (transcription via Whisper).</li>
+          <li><strong>🔗 URL</strong> — paste a page URL; VaultMind fetches and converts it. CORS-blocked? Paste the text instead.</li>
+          <li><strong>📋 Paste</strong> — paste any text (article snippet, quote, thought) directly into the queue.</li>
+          <li><strong>🎤 Record</strong> — capture a voice memo in the browser; Whisper transcribes it automatically.</li>
+          <li><strong>_inbox/ watcher</strong> — save files to the <code>_inbox/</code> folder from any app on your computer. VaultMind detects them within 5 s and queues them. Enable <em>Auto</em> to process without clicking.</li>
+          <li><strong>Processing pipeline</strong> — extract text → AI analysis (summary, entities, tags, links) → source note saved to <code>_sources/YYYY-MM-DD/</code> → entity/concept pages proposed for review.</li>
+          <li><strong>Review overlay</strong> — accept or skip each proposed note individually, or hit <em>Accept All</em>. Accepted pages are written to vault root and appear in the graph immediately.</li>
+          <li><strong>Deduplication</strong> — SHA-256 hash checked on every file. Duplicate sources are silently skipped.</li>
+          <li><strong>Done items</strong> fade out after 30 s. Errors stay until you reload.</li>
+        </ul>
+        <p style="margin-top:6px"><strong>Folder mode required</strong> for <code>_inbox/</code> watching and writing notes to disk. ZIP mode still works for manual drops — notes are held in memory for the session.</p>
+      </div>
+
+      <!-- Audit -->
+      <div class="help-panel" id="hp-audit">
+        <p>The <strong>Audit</strong> sidebar tab gives a structural health report of your vault, plus three AI-powered wiki maintenance operations.</p>
+        <ul>
+          <li><strong>Orphan Notes</strong> — notes with no inbound or outbound links at all.</li>
+          <li><strong>No Inbound Links</strong> — notes that link out but nothing links to them.</li>
+          <li><strong>Broken Links</strong> — <code>[[wikilinks]]</code> that don't resolve to any note.</li>
+          <li><strong>Most Linked</strong> — top hub notes by inbound link count.</li>
+          <li><strong>Tag Cloud</strong> — click any tag to filter the graph to only those notes.</li>
+          <li><strong>Frontmatter Lint</strong> — flags frontmatter fields present in most notes but missing in a few.</li>
+        </ul>
+        <p style="margin-top:6px"><strong>Wiki Maintenance</strong> — three on-demand operations:</p>
+        <ul>
+          <li><strong>🔎 Analyze gaps</strong> — no AI needed. Finds entities mentioned in 2+ source notes that have no page, broken links referenced from 2+ notes, and entity pages with only 1 source. Each gap shows a <em>Create page</em> button (AI-generated) or <em>Skip</em>.</li>
+          <li><strong>🕓 Check staleness</strong> — no AI needed. Compares each entity page's <code>last_updated</code> timestamp against newer source notes that mention it. Stale notes get a <em>Re-synthesize</em> button — the AI rewrites the page body incorporating all newer sources.</li>
+          <li><strong>🔍 Scan contradictions</strong> — AI-powered. Compares your recent source notes against existing entity pages and surfaces factual conflicts (different dates, numbers, claims). Each conflict can be kept, flagged, or dismissed.</li>
+        </ul>
       </div>
 
       <!-- Chat -->
       <div class="help-panel" id="hp-chat">
-        <p>Ask questions about your vault. Context is pulled from the selected note and its neighbours (micro-RAG).</p>
+        <p>Ask questions about your vault. Context is pulled automatically from the selected note and its neighbours.</p>
         <ul>
-          <li><strong>Local (WebGPU)</strong> — runs a small LLM entirely in your browser. No data leaves the device. Requires a WebGPU-capable browser (Chrome 113+).</li>
-          <li><strong>First load takes time</strong> — the model downloads once (~1–4 GB). After that it is cached in your browser and loads in seconds on every visit. You will not need to re-download it.</li>
-          <li><strong>API</strong> — connects to any OpenAI-compatible endpoint. Works with OpenRouter, Groq, LM Studio, Ollama, and more.</li>
-          <li><strong>Click a node</strong> then ask — chat automatically scopes context to that note and its 1-hop neighbours.</li>
-          <li><strong>💬 button</strong> on the note panel — focuses the chat on the current note.</li>
-          <li><strong>🌐 button</strong> in the chat bar — toggle a live web search to augment answers.</li>
-          <li><strong>Settings collapse</strong> automatically when a model is loaded.</li>
+          <li><strong>Local (WebGPU)</strong> — runs a small LLM entirely in your browser. No data leaves the device. Requires Chrome 113+ or equivalent.</li>
+          <li><strong>Auto-load</strong> — after your first successful model load, VaultMind remembers your choice. On the next vault open it checks the browser cache and loads the model automatically if it's already downloaded.</li>
+          <li><strong>First load is slow</strong> — the model downloads once (~1–4 GB) and is cached. Every subsequent session loads in seconds.</li>
+          <li><strong>API mode</strong> — connects to any OpenAI-compatible endpoint: OpenRouter, Groq, LM Studio, Ollama, and more. No API key needed for local servers.</li>
+          <li><strong>System prompt</strong> — expand <em>System prompt</em> inside Settings to customise the AI's persona and instructions. Changes persist across sessions. <em>Reset</em> restores the default.</li>
+          <li><strong>Click a node first</strong> — chat scopes context to that note and its 1-hop neighbours. The context pill in the header shows what's in scope.</li>
+          <li><strong>🌐 Web search</strong> — toggle to augment answers with live search results (Tavily, Brave, or SearXNG).</li>
         </ul>
-        <p style="margin-top:6px"><strong>LM Studio / Ollama?</strong> Enable CORS: in LM Studio open <em>Local Server → Server Settings → Enable CORS</em>. For Ollama restart with <code>OLLAMA_ORIGINS="*" ollama serve</code>.</p>
+        <p style="margin-top:6px"><strong>LM Studio / Ollama?</strong> Enable CORS: LM Studio → <em>Local Server → Server Settings → Enable CORS</em>. Ollama: restart with <code>OLLAMA_ORIGINS="*" ollama serve</code>.</p>
       </div>
 
       <!-- RAG -->
       <div class="help-panel" id="hp-rag">
         <p>VaultMind uses <strong>Retrieval-Augmented Generation (RAG)</strong> to ground AI answers in your actual notes — not the model's training data.</p>
         <ul>
-          <li><strong>How it works</strong> — your notes are split into chunks and embedded using <code>all-MiniLM-L6-v2</code> (a small, fast model running in the browser via WASM). Each chunk gets a semantic vector.</li>
-          <li><strong>Micro-RAG on node click</strong> — when you select a node, VaultMind pre-warms a context window scoped to that note and its direct neighbours only. Questions are answered with this focused context first.</li>
-          <li><strong>Full-vault fallback</strong> — if no relevant chunks exist in the local neighbourhood, the search expands to the entire vault.</li>
-          <li><strong>Cosine similarity</strong> — chunks are ranked by how close they are to your question in semantic space. Only chunks above a relevance threshold are included.</li>
-          <li><strong>Source citations</strong> — click <em>Source</em> in the chat bar to see which notes contributed to the last answer.</li>
-          <li><strong>Embedding runs once</strong> — the first vault load embeds all notes. Embeddings are held in memory for the session; re-opening the vault re-embeds.</li>
+          <li><strong>How it works</strong> — notes are split into chunks and embedded with <code>all-MiniLM-L6-v2</code> running in the browser via WASM. Each chunk gets a semantic vector.</li>
+          <li><strong>Micro-RAG on node click</strong> — selecting a node pre-warms a context window scoped to that note and its direct neighbours only.</li>
+          <li><strong>Full-vault fallback</strong> — if no relevant local chunks exist, search expands to the entire vault.</li>
+          <li><strong>Cosine similarity</strong> — chunks ranked by semantic closeness to your question. Only above-threshold chunks are included.</li>
+          <li><strong>Embedding runs once</strong> per session — re-opening the vault re-embeds.</li>
         </ul>
-        <p style="margin-top:6px"><strong>Tip:</strong> click a specific note before asking a question to get the most focused, relevant answer. The context pill in the chat header shows which note is currently in scope.</p>
+        <p style="margin-top:6px"><strong>Tip:</strong> click a note before asking for the most focused answer. The ingest pipeline also benefits from RAG — entity extraction uses the vault index to match existing pages.</p>
       </div>
 
       <!-- Editor -->
       <div class="help-panel" id="hp-editor">
         <p>Click any note to open the preview panel, then press <strong>✏️</strong> to edit it in place.</p>
         <ul>
-          <li><strong>Toolbar</strong> — B / I wrap selection; H1–H3 prefix the current line; <code>`c`</code> inline code; <code>```</code> code block; 🔗 link; • / 1. / ☐ list items; — rule; " quote.</li>
-          <li><strong>Ctrl / ⌘ + B / I / S</strong> — bold, italic, save shortcuts.</li>
-          <li><strong>Autosave</strong> — tick the checkbox; saves to disk 1.5 s after each keystroke.</li>
-          <li><strong>Save</strong> — writes back to the original <code>.md</code> file (requires the vault to be opened as a folder, not a ZIP).</li>
-          <li><strong>Discard</strong> — restores the last saved version.</li>
-          <li><strong>Unsaved draft</strong> — if you switch notes without saving, your edits are kept in memory (amber <em>● unsaved draft</em> badge). Come back and continue, or Discard.</li>
-          <li>A small <strong>amber dot</strong> appears next to the note name in the sidebar while unsaved changes exist.</li>
+          <li><strong>Toolbar</strong> — B / I wrap selection; H1–H3 prefix the line; <code>`c`</code> inline code; <code>```</code> code block; 🔗 link; • / 1. / ☐ lists; — rule; " quote.</li>
+          <li><strong>Ctrl / ⌘ + B / I / S</strong> — bold, italic, save.</li>
+          <li><strong>Autosave</strong> — tick the checkbox; saves 1.5 s after each keystroke.</li>
+          <li><strong>Save</strong> — writes back to the <code>.md</code> file on disk (folder mode only).</li>
+          <li><strong>Unsaved draft</strong> — switching notes without saving keeps your edits in memory (amber <em>● unsaved draft</em> badge). Return to continue, or Discard.</li>
         </ul>
       </div>
 
@@ -1076,11 +1110,12 @@ body {
       <div class="help-panel" id="hp-search">
         <p>The search box in the Notes sidebar searches <strong>full note bodies</strong>, not just titles.</p>
         <ul>
-          <li><strong>Multi-word query</strong> — each word is scored independently. A note mentioning all terms more often ranks higher.</li>
-          <li><strong>Title hits</strong> are weighted 10× body hits, so a note whose name matches always floats to the top.</li>
-          <li><strong>Snippets</strong> — a short extract around the first match is shown below each result, with your query terms highlighted.</li>
-          <li><strong>No query</strong> — list reverts to link-degree order (most connected notes first).</li>
-          <li><strong>Tip:</strong> search is instant and entirely in-memory — no network, no indexing step.</li>
+          <li><strong>Multi-word</strong> — each word scored independently; notes mentioning all terms rank higher.</li>
+          <li><strong>Title hits</strong> weighted 10× body hits — a title match always floats to the top.</li>
+          <li><strong>Snippets</strong> — short extract around the first match, with terms highlighted.</li>
+          <li><strong>No query</strong> — list reverts to link-degree order (most connected first).</li>
+          <li><strong>Tag filter</strong> — click any tag in the Audit tab to filter the graph; the active tag is shown in the filter bar above the canvas.</li>
+          <li>Search is <strong>instant and in-memory</strong> — no network, no indexing step.</li>
         </ul>
       </div>
 
