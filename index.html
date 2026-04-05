@@ -6,6 +6,7 @@
 <title>VaultMind — Obsidian Vault Explorer</title>
 <meta name="author" content="Chirag Patnaik">
 <meta name="description" content="Explore your Obsidian vault with a force graph, vault audit, and local-first AI. No server. No sync. No account.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d1117'/%3E%3Ctext x='16' y='22' font-family='system-ui%2Csans-serif' font-size='14' font-weight='800' text-anchor='middle' fill='%237c6af7'%3EVM%3C/text%3E%3C/svg%3E">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -730,8 +731,8 @@ body {
             </div>
             <div class="chat-cfg" id="chat-local-cfg">
               <select class="chat-cfg-input" id="chat-model-id">
-                <option value="gemma4-e4b">Gemma 4 E4B</option>
-                <option value="gemma4-e2b">Gemma 4 E2B (faster)</option>
+                <option value="gemma4-e2b">Gemma 4 E2B</option>
+                <option value="gemma4-e4b">Gemma 4 E4B (higher quality)</option>
                 <option value="qwen-1.5b">Qwen 2.5 1.5B</option>
                 <option value="qwen-0.5b">Qwen 2.5 0.5B</option>
                 <option value="smollm-1.7b">SmolLM2 1.7B</option>
@@ -804,6 +805,7 @@ body {
     <div class="help-tabs">
       <button class="help-tab active" data-tab="graph">🕸 Graph</button>
       <button class="help-tab" data-tab="chat">💬 Chat</button>
+      <button class="help-tab" data-tab="rag">🧩 RAG</button>
       <button class="help-tab" data-tab="editor">✏️ Editor</button>
       <button class="help-tab" data-tab="search">🔍 Search</button>
     </div>
@@ -831,6 +833,7 @@ body {
         <p>Ask questions about your vault. Context is pulled from the selected note and its neighbours (micro-RAG).</p>
         <ul>
           <li><strong>Local (WebGPU)</strong> — runs a small LLM entirely in your browser. No data leaves the device. Requires a WebGPU-capable browser (Chrome 113+).</li>
+          <li><strong>First load takes time</strong> — the model downloads once (~1–4 GB). After that it is cached in your browser and loads in seconds on every visit. You will not need to re-download it.</li>
           <li><strong>API</strong> — connects to any OpenAI-compatible endpoint. Works with OpenRouter, Groq, LM Studio, Ollama, and more.</li>
           <li><strong>Click a node</strong> then ask — chat automatically scopes context to that note and its 1-hop neighbours.</li>
           <li><strong>💬 button</strong> on the note panel — focuses the chat on the current note.</li>
@@ -838,6 +841,20 @@ body {
           <li><strong>Settings collapse</strong> automatically when a model is loaded.</li>
         </ul>
         <p style="margin-top:6px"><strong>LM Studio / Ollama?</strong> Enable CORS: in LM Studio open <em>Local Server → Server Settings → Enable CORS</em>. For Ollama restart with <code>OLLAMA_ORIGINS="*" ollama serve</code>.</p>
+      </div>
+
+      <!-- RAG -->
+      <div class="help-panel" id="hp-rag">
+        <p>VaultMind uses <strong>Retrieval-Augmented Generation (RAG)</strong> to ground AI answers in your actual notes — not the model's training data.</p>
+        <ul>
+          <li><strong>How it works</strong> — your notes are split into chunks and embedded using <code>all-MiniLM-L6-v2</code> (a small, fast model running in the browser via WASM). Each chunk gets a semantic vector.</li>
+          <li><strong>Micro-RAG on node click</strong> — when you select a node, VaultMind pre-warms a context window scoped to that note and its direct neighbours only. Questions are answered with this focused context first.</li>
+          <li><strong>Full-vault fallback</strong> — if no relevant chunks exist in the local neighbourhood, the search expands to the entire vault.</li>
+          <li><strong>Cosine similarity</strong> — chunks are ranked by how close they are to your question in semantic space. Only chunks above a relevance threshold are included.</li>
+          <li><strong>Source citations</strong> — click <em>Source</em> in the chat bar to see which notes contributed to the last answer.</li>
+          <li><strong>Embedding runs once</strong> — the first vault load embeds all notes. Embeddings are held in memory for the session; re-opening the vault re-embeds.</li>
+        </ul>
+        <p style="margin-top:6px"><strong>Tip:</strong> click a specific note before asking a question to get the most focused, relevant answer. The context pill in the chat header shows which note is currently in scope.</p>
       </div>
 
       <!-- Editor -->
