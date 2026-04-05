@@ -190,6 +190,22 @@ Expand *System prompt* inside chat Settings to customise the AI's persona and in
 
 ---
 
+## Footprint
+
+The entire app is a single HTML file.
+
+| | VaultMind | Typical news article page |
+|---|---|---|
+| Files | 1 | 100s (HTML + JS bundles + CSS + fonts + images + trackers) |
+| Raw size | 225 KB | 3–8 MB |
+| Transferred (gzipped) | **~58 KB** | 3–8 MB |
+| Trackers / ads | 0 | Many |
+| ML inference | ✅ In-browser | ✗ |
+
+VaultMind is smaller than the HTML alone on most news pages — and does local LLM inference, semantic search, OCR, and audio transcription on top of it. The only things fetched at runtime are the AI models, and those are cached in the browser after the first download.
+
+---
+
 **Built by [Chirag Patnaik](https://github.com/NakliTechie)**
 
 *Built with [Claude](https://claude.ai).*
