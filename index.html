@@ -3808,6 +3808,7 @@ const ingest = {
   _currentId: null,
   _inboxHandle: null,         // FileSystemDirectoryHandle for _inbox/
   _inboxSizes: new Map(),     // filename → size at last poll (stability check)
+  _batchTimer: null,          // debounce timer for auto-process batch
   whisperWorker: null,
   _tesseractLoaded: false,
   _pdfjsLoaded: null,         // cached pdfjs module
@@ -4330,7 +4331,14 @@ async function addToIngestQueue(file, origin, meta) {
   renderIngestQueue();
   updateIngestBadge();
 
-  if (ingest.autoProcess) processIngestItem(item.id);
+  if (ingest.autoProcess) {
+    // Debounce into a single processAllIngestItems call so that batches of files
+    // (e.g. 4 images pasted into _inbox/ at once) all land in the queue before
+    // processing starts. Without this, each addToIngestQueue call fires
+    // processIngestItem immediately — the first grabs the lock and the rest bail.
+    clearTimeout(ingest._batchTimer);
+    ingest._batchTimer = setTimeout(processAllIngestItems, 400);
+  }
 }
 
 window.processIngestItem = async function(id) {
@@ -4444,6 +4452,7 @@ window.processIngestItem = async function(id) {
 };
 
 window.processAllIngestItems = async function() {
+  if (ingest.processing) return; // already mid-item; chain will continue naturally
   const pending = ingest.queue.filter(i => i.status === 'pending');
   for (const item of pending) {
     if (item.status === 'pending') await processIngestItem(item.id);
