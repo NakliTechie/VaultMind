@@ -2,7 +2,7 @@
 
 An Obsidian vault explorer that runs entirely in your browser — force graph, semantic search, AI chat, and in-place note editing. No server. No API keys required. Nothing leaves your device.
 
-**[→ Try it live](https://naklitechie.github.io/VaultMind/)**
+**[→ Try it live](https://vaultmind.naklitechie.com)**
 
 ## What it does
 
