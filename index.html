@@ -4243,13 +4243,17 @@ function buildIndexSummary() {
     .filter(n => !n.path.startsWith('_'))
     .slice(0, 120);
   if (!notes.length) return '(empty vault)';
-  return notes.map(n => n.name).join('\n');
+  return notes.map(n => {
+    const type = n.fm.page_type || (n.fm.vaultmind_version ? 'entity' : 'note');
+    const tags = n.tags && n.tags.size ? ' [' + [...n.tags].slice(0, 3).join(', ') + ']' : '';
+    return `- ${n.name} (${type})${tags}`;
+  }).join('\n');
 }
 
 function buildIngestPrompt(item, schema, indexSummary) {
   const schemaBlock = schema ? `SCHEMA:\n${schema}\n\n` : '';
   const content = (item.content || '').slice(0, 4000) + (item.content?.length > 4000 ? '\n[truncated]' : '');
-  return `${schemaBlock}EXISTING VAULT NOTES (titles only, for link matching):
+  return `${schemaBlock}EXISTING VAULT PAGES (use these exact titles in [[wikilinks]]):
 ${indexSummary}
 
 SOURCE DOCUMENT:
@@ -4258,6 +4262,13 @@ Type: ${item.type}
 ${item.meta?.url ? 'URL: ' + item.meta.url + '\n' : ''}
 ${content}
 
+INSTRUCTIONS:
+1. Extract entities (people, tools, concepts, places, orgs) mentioned in the source.
+2. For each entity: if an existing vault page matches (see list above), record it in existing_page and propose a page_update. If no page exists and it is worth its own note, propose a new_page.
+3. In ALL generated page content, use [[wikilinks]] to link to related entities and to other existing vault pages where relevant. Every generated page should link to at least one other page.
+4. Generated pages must link back to this source using [[your title field value]] as a wikilink — e.g. if title is "LLM Wiki", write [[LLM Wiki]] in the page content.
+5. Prefer linking to existing pages over creating redundant new ones.
+
 Respond with ONLY this JSON object (no other text):
 {
   "summary": "2-4 sentence summary of this source",
@@ -4265,9 +4276,9 @@ Respond with ONLY this JSON object (no other text):
   "creator": "author name or null",
   "date_published": "YYYY-MM-DD or null",
   "tags": ["tag1", "tag2"],
-  "entities": [{"name": "...", "type": "person|organization|tool|place|concept", "brief": "one line description", "existing_page": "exact title from vault list if match else null", "new_information": "what this source adds"}],
-  "new_pages": [{"title": "Page Title", "page_type": "entity|concept", "content": "full markdown content including YAML frontmatter"}],
-  "page_updates": [{"title": "Existing Page Title", "append_content": "markdown to append to that page"}]
+  "entities": [{"name": "...", "type": "person|organization|tool|place|concept", "brief": "one line description", "existing_page": "exact vault page title if match else null", "new_information": "what this source adds"}],
+  "new_pages": [{"title": "Page Title", "page_type": "entity|concept", "content": "full markdown body (no frontmatter) with [[wikilinks]] to related pages and back to the source note"}],
+  "page_updates": [{"title": "Existing Page Title", "append_content": "markdown paragraph to append, with [[wikilinks]] back to the source note and related pages"}]
 }`;
 }
 
@@ -4290,6 +4301,15 @@ function buildSourceNote({ title, summary, creator, datePublished, sourceType, o
 
   let body = '';
   if (summary) body += `${summary}\n\n`;
+
+  // Deterministic wikilinks — never orphaned regardless of AI output
+  if (entityNames.length) {
+    body += `**Entities:** ${entityNames.map(e => `[[${e}]]`).join(' · ')}\n\n`;
+  }
+  if (tags?.length) {
+    body += `**Tags:** ${tags.map(t => `#${t}`).join(' ')}\n\n`;
+  }
+
   if (extractedText && extractedText !== summary) {
     body += `## Original content\n\n`;
     const truncated = extractedText.slice(0, 6000);
@@ -4520,10 +4540,13 @@ window.ingestAccept = async function(idx) {
   const rcEl = document.getElementById('rc-' + idx);
   try {
     if (p.content !== undefined) {
-      // New page
+      // New page — prepend deterministic frontmatter so entity pages are never orphans
       const filename = p.title.replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80) + '.md';
-      await writeVaultFile([filename], p.content);
-      addNoteToVault(filename, p.content);
+      const now = new Date().toISOString();
+      const fm  = `---\ntitle: "${p.title.replace(/"/g, '\\"')}"\npage_type: ${p.page_type || 'entity'}\nfirst_seen: ${now.slice(0,10)}\nsource_count: 1\nlast_updated: ${now}\nvaultmind_version: 1\n---\n\n`;
+      const fullContent = fm + (p.content || '');
+      await writeVaultFile([filename], fullContent);
+      addNoteToVault(filename, fullContent);
     } else {
       // Update existing page
       const key  = p.title.toLowerCase().replace(/\.md$/i, '');
