@@ -443,7 +443,9 @@ body {
   padding: 6px 8px; border-radius: 5px;
   background: var(--surface2); border: 1px solid var(--border);
   margin-bottom: 3px; flex-shrink: 0;
+  transition: opacity 4s ease;
 }
+.ingest-item.fading { opacity: 0; }
 .ingest-item-row  { display: flex; align-items: center; gap: 5px; }
 .ingest-item-row2 { display: flex; align-items: center; gap: 5px; margin-top: 2px; padding-left: 18px; }
 .ingest-type-icon { font-size: 0.85rem; flex-shrink: 0; }
@@ -3809,6 +3811,7 @@ const ingest = {
   _inboxHandle: null,         // FileSystemDirectoryHandle for _inbox/
   _inboxSizes: new Map(),     // filename → size at last poll (stability check)
   _batchTimer: null,          // debounce timer for auto-process batch
+  drainInterval: null,        // 60s safety-net to catch any stuck pending items
   whisperWorker: null,
   _tesseractLoaded: false,
   _pdfjsLoaded: null,         // cached pdfjs module
@@ -4429,6 +4432,17 @@ window.processIngestItem = async function(id) {
     updateIngestBadge();
     await saveIndexMd();
 
+    // Schedule fade-out then removal (30s). Errors stay visible — they need attention.
+    const doneId = item.id;
+    setTimeout(() => {
+      document.querySelector(`.ingest-item[data-iid="${doneId}"]`)?.classList.add('fading');
+    }, 26000);
+    setTimeout(() => {
+      ingest.queue = ingest.queue.filter(i => i.id !== doneId);
+      renderIngestQueue();
+      updateIngestBadge();
+    }, 30000);
+
     // 8. Show review panel if there are proposed notes
     const proposed = [...(aiResult.new_pages || []), ...(aiResult.page_updates || [])];
     if (proposed.length > 0) {
@@ -4448,6 +4462,10 @@ window.processIngestItem = async function(id) {
   } finally {
     ingest.processing = false;
     ingest._currentId = null;
+    // Chain: if auto-process is on and more items arrived during this run, pick them up now
+    if (ingest.autoProcess && ingest.queue.some(i => i.status === 'pending')) {
+      processAllIngestItems();
+    }
   }
 };
 
@@ -4720,15 +4738,25 @@ async function startInboxWatcher() {
 
 function stopInboxWatcher() {
   clearInterval(ingest.watchInterval);
+  clearInterval(ingest.drainInterval);
   ingest.watchInterval = null;
+  ingest.drainInterval = null;
 }
 
 // ── Initialisation ────────────────────────────────────────────────────────────
 
 async function initIngestSystem() {
-  // Show inbox strip only when folder mode is active
-  if (!vault.dirHandle) return;
-  await startInboxWatcher();
+  if (vault.dirHandle) await startInboxWatcher();
+
+  // Safety-net drain: every 60s, if auto-process is on and items are stuck pending
+  // (e.g. arrived while the pipe was busy and the chain didn't catch them), drain now.
+  ingest.drainInterval = setInterval(() => {
+    if (ingest.autoProcess && !ingest.processing &&
+        ingest.queue.some(i => i.status === 'pending')) {
+      processAllIngestItems();
+    }
+  }, 60000);
+
   renderIngestQueue();
 }
 
