@@ -633,6 +633,28 @@ body {
 #chat-settings[open] summary::after { content: '▼'; }
 #chat-settings summary::-webkit-details-marker { display: none; }
 .chat-settings-body { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
+/* Nested prompt editor */
+#prompt-settings { border: none; margin-top: 2px; }
+#prompt-settings summary {
+  list-style: none; cursor: pointer; font-size: 0.71rem; font-weight: 600;
+  color: var(--muted); padding: 3px 0; user-select: none;
+}
+#prompt-settings summary:hover { color: var(--text); }
+#prompt-settings summary::-webkit-details-marker { display: none; }
+#prompt-settings summary::before { content: '▶ '; font-size: 0.6rem; }
+#prompt-settings[open] summary::before { content: '▼ '; }
+#chat-system-prompt {
+  width: 100%; box-sizing: border-box; resize: vertical;
+  min-height: 90px; font-size: 0.72rem; font-family: inherit; line-height: 1.45;
+  padding: 6px 8px; border-radius: 5px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); outline: none;
+}
+#chat-system-prompt:focus { border-color: var(--accent); }
+.prompt-reset-row { display: flex; justify-content: flex-end; margin-top: 3px; }
+.prompt-reset-btn { font-size: 0.68rem; padding: 2px 8px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--bg2); color: var(--muted);
+  cursor: pointer; }
+.prompt-reset-btn:hover { color: var(--text); }
 .chat-search-sep {
   font-size: 0.68rem; color: var(--muted); font-weight: 600;
   letter-spacing: 0.05em; padding: 4px 0 2px;
@@ -938,6 +960,14 @@ body {
           </select>
           <input class="chat-cfg-input" id="search-key" type="password" placeholder="API key" style="display:none">
           <input class="chat-cfg-input" id="search-url" placeholder="SearXNG instance URL" style="display:none">
+          <!-- System prompt editor -->
+          <details id="prompt-settings">
+            <summary>System prompt</summary>
+            <textarea id="chat-system-prompt" rows="5" spellcheck="false"></textarea>
+            <div class="prompt-reset-row">
+              <button class="prompt-reset-btn" id="prompt-reset-btn">Reset to default</button>
+            </div>
+          </details>
         </div>
       </details>
       <!-- Model status -->
@@ -2867,6 +2897,7 @@ async function loadFiles(files) {
     saveIndexMd();  // write/update index.md if folder access exists
     startEmbedWorker(); // begin indexing vault for RAG
     initIngestSystem(); // set up _inbox/ watcher and ingest tab
+    tryAutoLoadModel(); // re-load last used model if cached
     // Show app first so canvas has real dimensions, then resize + draw
     document.getElementById('loading').classList.remove('visible');
     document.getElementById('drop-screen').classList.add('hiding');
@@ -2978,6 +3009,42 @@ function setProgress(pct, label, sub) {
 function tick() { return new Promise(r => setTimeout(r, 0)); }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
+
+const DEFAULT_SYSTEM_PROMPT =
+  `You are a knowledgeable assistant helping the user explore their Obsidian knowledge vault. Be concise. Reference note titles with [[double brackets]]. If writing a new note, use YAML frontmatter.`;
+
+const LS_MODEL_KEY  = 'vm_last_model';
+const LS_PROMPT_KEY = 'vm_system_prompt';
+
+function getSystemPrompt() {
+  return localStorage.getItem(LS_PROMPT_KEY) || DEFAULT_SYSTEM_PROMPT;
+}
+
+// Check if a model is already in browser Cache Storage (so auto-load won't trigger a download)
+async function isModelCached(modelId) {
+  try {
+    const names = await caches.keys();
+    for (const name of names) {
+      const cache = await caches.open(name);
+      const keys  = await cache.keys();
+      if (keys.some(req => req.url.includes(modelId))) return true;
+    }
+  } catch {}
+  return false;
+}
+
+// Trigger model load programmatically (same path as the button click)
+function triggerModelLoad(key) {
+  const mdef = CHAT_MODELS[key];
+  if (!mdef || chat.modelLoading || chat.modelReady) return;
+  if (!navigator.gpu) return;
+
+  // Pre-select the dropdown
+  const sel = document.getElementById('chat-model-id');
+  if (sel) sel.value = key;
+
+  document.getElementById('btn-load-model').click();
+}
 
 const CHAT_MODELS = {
   'gemma4-e4b':  { id: 'onnx-community/gemma-4-E4B-it-ONNX',      dtype: 'q4f16', type: 'multimodal' },
@@ -3316,7 +3383,7 @@ async function buildSystemPrompt(query) {
     });
   }
 
-  return `You are a knowledgeable assistant helping the user explore their Obsidian knowledge vault. Be concise. Reference note titles with [[double brackets]]. If writing a new note, use YAML frontmatter.\n\n${ctx}`;
+  return `${getSystemPrompt()}\n\n${ctx}`;
 }
 
 function getCtxLabel() {
@@ -3671,6 +3738,28 @@ document.querySelectorAll('.chat-mode-btn').forEach(btn => btn.addEventListener(
   document.getElementById('chat-send').disabled = mode === 'local' ? !chat.modelReady : false;
 }));
 
+async function tryAutoLoadModel() {
+  const key = localStorage.getItem(LS_MODEL_KEY);
+  if (!key || !CHAT_MODELS[key]) return;
+  if (chat.modelReady || chat.modelLoading) return;
+  if (!navigator.gpu) return; // API mode — don't interfere
+
+  // Pre-select the dropdown to the last-used model
+  const sel = document.getElementById('chat-model-id');
+  if (sel) sel.value = key;
+
+  const mdef = CHAT_MODELS[key];
+  const cached = await isModelCached(mdef.id);
+  if (cached) {
+    // Silently auto-load — user won't notice a delay since it's from Cache Storage
+    triggerModelLoad(key);
+  } else {
+    // Not in cache (cleared, or first session on this device) — don't auto-download
+    // Just show a subtle hint so the user knows they can reload it
+    setChatStatus(`Last used: ${sel.selectedOptions[0]?.text || key} — click Load Model`, 'hint');
+  }
+}
+
 document.getElementById('btn-load-model').addEventListener('click', () => {
   if (chat.modelLoading || chat.modelReady) return;
   if (!navigator.gpu) { setChatStatus('WebGPU not supported — use API mode', 'error'); return; }
@@ -3698,6 +3787,7 @@ document.getElementById('btn-load-model').addEventListener('click', () => {
     } else if (data.type === 'ready') {
       chat.modelReady   = true;
       chat.modelLoading = false;
+      localStorage.setItem(LS_MODEL_KEY, document.getElementById('chat-model-id').value);
       setChatStatus('Model ready ✓', 'ready');
       document.getElementById('chat-prog').style.display = 'none';
       document.getElementById('chat-send').disabled = false;
@@ -4850,6 +4940,28 @@ async function initIngestSystem() {
 
   // Render empty queue state on load
   renderIngestQueue();
+})();
+
+// ── System prompt editor ──────────────────────────────────────────────────────
+(function initPromptEditor() {
+  const ta  = document.getElementById('chat-system-prompt');
+  const rst = document.getElementById('prompt-reset-btn');
+  if (!ta) return;
+  // Load saved value (or default)
+  ta.value = localStorage.getItem(LS_PROMPT_KEY) || DEFAULT_SYSTEM_PROMPT;
+  ta.addEventListener('input', () => {
+    const val = ta.value.trim();
+    if (val && val !== DEFAULT_SYSTEM_PROMPT) {
+      localStorage.setItem(LS_PROMPT_KEY, val);
+    } else {
+      localStorage.removeItem(LS_PROMPT_KEY);
+    }
+  });
+  rst.addEventListener('click', () => {
+    ta.value = DEFAULT_SYSTEM_PROMPT;
+    localStorage.removeItem(LS_PROMPT_KEY);
+    ta.focus();
+  });
 })();
 
 // ── MOC generation button ─────────────────────────────────────────────────────
