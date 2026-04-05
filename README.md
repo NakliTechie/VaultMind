@@ -60,15 +60,29 @@ Save files to `_inbox/` from any app on your computer. VaultMind detects them wi
 
 PDF.js, Tesseract, and Whisper are all lazy-loaded on first use — zero overhead if you don't use them.
 
+### Content modes
+
+The AI adjusts its extraction strategy based on what you drop in:
+
+| Mode | Triggered by | What the AI focuses on |
+|---|---|---|
+| **voice** | Audio / voice memo | Key ideas, decisions, action items. Named entities only if explicit. |
+| **article** | URL | Core argument/thesis. Full entity extraction. Prefers updating existing pages. |
+| **document** | PDF | Arguments, conclusions, methodology. Section-aware summary. |
+| **image** | Image (OCR) | Best-effort only. Never infers entities not clearly present in the text. |
+| **note** | `.md`, `.txt`, `.csv`, paste | Linking focus. Minimal duplication of content already in the vault. |
+| **sparse** | Any content under 100 words | Writes a capture note only — no entity pages, no hallucination. |
+
 ### Processing pipeline
 
 1. **Extract** — text pulled from the file using the appropriate method above
-2. **AI analysis** — summary, entities (people, tools, concepts, orgs, places), tags, and wikilinks to existing vault pages
-3. **Source note** — written to `_sources/YYYY-MM-DD/` with full Obsidian frontmatter; entity wikilinks injected deterministically
-4. **Review** — proposed entity/concept pages shown for Accept / Skip. *Accept All* closes the panel automatically
-5. **Live update** — accepted pages written to vault root; graph re-renders with new nodes and edges immediately
-6. **Incremental re-index** — new notes are embedded and added to the semantic index in the same session, no reload needed
-7. **Log** — `_log.md` appended; `_index.md` rebuilt
+2. **Mode detect** — content type mapped to an extraction strategy (see table above)
+3. **AI analysis** — summary, entities, tags, wikilinks, and (for voice) action items
+4. **Source note** — written to `_sources/YYYY-MM-DD/` with full Obsidian frontmatter; entity wikilinks injected deterministically. Voice memos include a checkbox action items list.
+5. **Review** — proposed entity/concept pages shown for Accept / Skip. *Accept All* closes the panel automatically
+6. **Live update** — accepted pages written to vault root; graph re-renders with new nodes and edges immediately
+7. **Incremental re-index** — new notes are embedded and added to the semantic index in the same session, no reload needed
+8. **Log** — `_log.md` appended; `_index.md` rebuilt
 
 SHA-256 deduplication prevents the same file being processed twice. Done items fade from the queue after 30 s; errors stay until reload.
 
