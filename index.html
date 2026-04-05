@@ -750,6 +750,7 @@ body {
 
 <!-- ── Drop screen ─────────────────────────────────── -->
 <div id="drop-screen">
+  <button class="help-btn" id="btn-help-drop" title="Help" style="position:absolute;top:16px;right:20px">?</button>
   <div class="drop-logo">🧠</div>
   <div class="drop-title">VaultMind</div>
   <div class="drop-sub">Explore your Obsidian vault — force graph, semantic audit, local AI.<br>Everything stays in your browser. Zero data leaves your device.</div>
@@ -5252,6 +5253,9 @@ document.getElementById('moc-gen-btn').addEventListener('click', generateMocForC
 
 // ── Help modal ────────────────────────────────────────────────────────────────
 document.getElementById('btn-help').addEventListener('click', () => {
+  document.getElementById('help-modal').classList.add('open');
+});
+document.getElementById('btn-help-drop').addEventListener('click', () => {
   document.getElementById('help-modal').classList.add('open');
 });
 document.getElementById('help-close').addEventListener('click', () => {
