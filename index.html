@@ -1,0 +1,3212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VaultMind — Obsidian Vault Explorer</title>
+<meta name="author" content="Chirag Patnaik">
+<meta name="description" content="Explore your Obsidian vault with a force graph, vault audit, and local-first AI. No server. No sync. No account.">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #0d1117;
+  --surface:    #161b22;
+  --surface2:   #21262d;
+  --border:     #30363d;
+  --text:       #c9d1d9;
+  --muted:      #8b949e;
+  --accent:     #7c6af7;
+  --accent-hi:  #a78bfa;
+  --node-def:   #58a6ff;
+  --node-orph:  #f85149;
+  --node-hub:   #3fb950;
+  --node-sel:   #ffd700;
+  --tag-col:    #ffa657;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Drop screen ───────────────────────────────── */
+#drop-screen {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px;
+  background: var(--bg);
+  transition: opacity 0.3s;
+}
+#drop-screen.hiding { opacity: 0; pointer-events: none; }
+
+.drop-logo  { font-size: 3.2rem; line-height: 1; }
+.drop-title {
+  font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--accent-hi) 30%, var(--node-def));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.drop-sub {
+  color: var(--muted); font-size: 0.9rem;
+  text-align: center; max-width: 400px; line-height: 1.6;
+}
+.drop-actions { display: flex; gap: 12px; align-items: center; }
+.btn {
+  padding: 10px 22px; border-radius: 8px; border: none;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn:hover  { opacity: 0.85; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-primary   { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-sm        { padding: 6px 14px; font-size: 0.8rem; }
+
+.drop-zone {
+  width: 360px; padding: 36px 20px;
+  border: 2px dashed var(--border); border-radius: 12px;
+  text-align: center; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--surface);
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(124,106,247,0.07);
+}
+.drop-zone p { color: var(--muted); margin-top: 8px; font-size: 0.82rem; line-height: 1.55; }
+.drop-privacy { font-size: 0.75rem; color: var(--muted); text-align: center; }
+
+/* ── App layout ────────────────────────────────── */
+#app { display: none; flex-direction: column; height: 100vh; }
+#app.visible { display: flex; }
+
+/* Header */
+#header {
+  height: 46px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 16px; gap: 12px; flex-shrink: 0;
+}
+.header-brand { font-weight: 800; font-size: 1rem; color: var(--accent-hi); letter-spacing: -0.02em; }
+.header-vault { color: var(--muted); font-size: 0.82rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-stats { margin-left: auto; display: flex; gap: 16px; }
+.hstat { font-size: 0.78rem; color: var(--muted); }
+.hstat b { color: var(--text); font-weight: 600; }
+
+/* Body */
+#body { flex: 1; display: flex; overflow: hidden; }
+
+/* Sidebar */
+#sidebar {
+  width: 268px; flex-shrink: 0;
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tab-btn {
+  flex: 1; padding: 10px 8px; border: none; background: none;
+  color: var(--muted); cursor: pointer; font-size: 0.82rem; font-weight: 600;
+  border-bottom: 2px solid transparent; transition: color 0.15s; letter-spacing: 0.02em;
+}
+.tab-btn.active { color: var(--accent-hi); border-bottom-color: var(--accent); }
+.tab-panel { display: none; flex: 1; overflow-y: auto; padding: 10px; flex-direction: column; gap: 6px; }
+.tab-panel.active { display: flex; }
+
+/* Notes tab */
+.search-box {
+  width: 100%; padding: 7px 11px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-size: 0.82rem; outline: none;
+  flex-shrink: 0;
+}
+.search-box:focus { border-color: var(--accent); }
+.note-list { display: flex; flex-direction: column; gap: 1px; overflow-y: auto; flex: 1; }
+.note-item {
+  padding: 5px 9px; border-radius: 5px; cursor: pointer;
+  font-size: 0.82rem; display: flex; align-items: center; gap: 7px;
+  transition: background 0.12s; flex-wrap: wrap;
+}
+.note-item:hover    { background: var(--surface2); }
+.note-item.selected { background: rgba(124,106,247,0.18); }
+.note-snippet {
+  width: 100%; font-size: 0.69rem; color: var(--muted); line-height: 1.45;
+  padding: 1px 0 3px 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.note-snippet mark {
+  background: rgba(124,106,247,0.25); color: var(--text);
+  border-radius: 2px; padding: 0 1px;
+}
+.note-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.note-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-deg  { font-size: 0.72rem; color: var(--muted); }
+
+/* Audit tab */
+.audit-section { margin-bottom: 14px; }
+.audit-title {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; padding: 0 2px;
+}
+.audit-kv {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 9px; border-radius: 5px; background: var(--surface2);
+  font-size: 0.82rem; margin-bottom: 3px;
+}
+.audit-kv .val { font-weight: 700; color: var(--accent-hi); }
+.audit-item {
+  padding: 4px 9px; font-size: 0.78rem; border-radius: 4px; cursor: pointer;
+  color: var(--muted); transition: background 0.1s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.audit-item:hover  { background: var(--surface2); color: var(--text); }
+.audit-item.danger { color: var(--node-orph); }
+.audit-item.good   { color: var(--node-hub); }
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag-pill {
+  padding: 3px 9px; border-radius: 20px; font-size: 0.72rem;
+  background: rgba(255,166,87,0.12); color: var(--tag-col);
+  border: 1px solid rgba(255,166,87,0.25); cursor: pointer;
+  transition: background 0.15s;
+}
+.tag-pill:hover  { background: rgba(255,166,87,0.22); }
+.tag-pill.active { background: rgba(255,166,87,0.35); border-color: var(--tag-col); font-weight: 700; }
+
+/* Tag filter bar */
+#tag-filter-bar {
+  position: absolute; top: 12px; left: 12px;
+  background: rgba(22,27,34,0.92); border: 1px solid var(--tag-col);
+  border-radius: 20px; padding: 5px 12px; font-size: 0.78rem;
+  display: none; align-items: center; gap: 8px; z-index: 5;
+}
+#tag-filter-bar span { color: var(--tag-col); font-weight: 700; }
+.clear-filter {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 0.9rem; padding: 0; line-height: 1;
+}
+.clear-filter:hover { color: var(--text); }
+
+/* MOC badge */
+.moc-badge {
+  font-size: 0.65rem; padding: 1px 5px; border-radius: 3px;
+  background: rgba(232,121,249,0.15); color: #e879f9;
+  border: 1px solid rgba(232,121,249,0.3); flex-shrink: 0;
+}
+
+/* Transclusion block */
+.transclusion {
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0; padding: 8px 12px; margin: 0.6em 0;
+  background: rgba(124,106,247,0.04);
+}
+.transclusion-title {
+  font-size: 0.75rem; font-weight: 700; color: var(--accent-hi);
+  margin-bottom: 6px; opacity: 0.8;
+}
+.transclusion.broken { border-left-color: var(--node-orph); }
+.transclusion.broken em { color: var(--node-orph); font-style: normal; font-size: 0.78rem; }
+
+/* Frontmatter lint items */
+.lint-item {
+  padding: 4px 9px; font-size: 0.75rem; border-radius: 4px;
+  background: rgba(248,81,73,0.07); border-left: 2px solid var(--node-orph);
+  margin-bottom: 4px; color: var(--muted);
+}
+.lint-item b { color: var(--node-orph); }
+
+/* Graph area */
+#graph-area { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
+#graph-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+#graph-canvas.grabbing { cursor: grabbing; }
+#graph-canvas.rotating { cursor: crosshair; }
+
+#rot-hint {
+  position: absolute; bottom: 40px; right: 12px;
+  background: rgba(22,27,34,0.88); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 10px; font-size: 0.72rem; color: var(--muted);
+  pointer-events: none; opacity: 0; transition: opacity 0.2s;
+}
+#rot-hint.visible { opacity: 1; }
+
+.graph-controls {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ctrl-btn {
+  width: 30px; height: 30px; border-radius: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); cursor: pointer; font-size: 0.95rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s;
+}
+.ctrl-btn:hover { background: var(--surface2); }
+.ctrl-btn.active3d { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.graph-legend {
+  position: absolute; bottom: 40px; left: 12px;
+  background: rgba(22,27,34,0.88); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 12px;
+  display: flex; gap: 12px; font-size: 0.72rem;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; color: var(--muted); }
+.legend-dot  { width: 9px; height: 9px; border-radius: 50%; }
+
+/* Tooltip */
+#tooltip {
+  position: fixed; pointer-events: none;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 10px; font-size: 0.78rem;
+  z-index: 50; display: none; white-space: nowrap;
+}
+
+/* Note preview panel */
+#note-panel {
+  width: 0; flex-shrink: 0; overflow: hidden;
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transition: width 0.25s ease;
+}
+#note-panel.open { width: 340px; }
+
+/* Chat panel (always visible on right) */
+#chat-panel {
+  width: 320px; flex-shrink: 0;
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+  padding: 10px; gap: 6px;
+}
+.chat-panel-hdr {
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-panel-title { font-weight: 700; font-size: 0.85rem; letter-spacing: 0.03em; }
+
+.panel-header {
+  padding: 11px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.panel-title {
+  flex: 1; font-weight: 700; font-size: 0.9rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.close-btn {
+  width: 22px; height: 22px; border-radius: 4px; border: none;
+  background: none; color: var(--muted); cursor: pointer; font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.close-btn:hover { background: var(--surface2); color: var(--text); }
+.panel-meta {
+  padding: 7px 14px; border-bottom: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; gap: 5px; font-size: 0.72rem; flex-shrink: 0;
+  min-height: 30px;
+}
+.meta-tag  { padding: 2px 8px; border-radius: 10px; background: rgba(255,166,87,0.12); color: var(--tag-col); }
+.meta-info { color: var(--muted); align-self: center; }
+.note-body {
+  flex: 1; overflow-y: auto; padding: 14px;
+  font-size: 0.83rem; line-height: 1.7;
+}
+
+/* ── Note editor ── */
+#note-editor {
+  flex: 1; display: none; flex-direction: column; overflow: hidden;
+}
+#note-editor.active { display: flex; }
+.editor-toolbar {
+  display: flex; gap: 3px; padding: 6px 10px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.ed-btn {
+  min-width: 26px; height: 24px; padding: 0 5px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted); font-size: 0.75rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+}
+.ed-btn:hover { border-color: var(--accent); color: var(--accent-hi); }
+.ed-btn b { font-weight: 800; }
+.ed-sep { width: 1px; background: var(--border); margin: 2px 3px; align-self: stretch; }
+.note-textarea {
+  flex: 1; padding: 14px; background: var(--bg);
+  border: none; outline: none; resize: none; overflow-y: auto;
+  color: var(--text); font-family: ui-monospace, 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+  font-size: 0.81rem; line-height: 1.7; tab-size: 2;
+}
+.editor-footer {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.autosave-lbl {
+  font-size: 0.72rem; color: var(--muted); display: flex; align-items: center;
+  gap: 5px; margin-right: auto; cursor: pointer; user-select: none;
+}
+.ed-saved { font-size: 0.68rem; color: var(--node-hub); margin-right: auto; }
+.note-dirty {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--tag-col); margin-left: 5px; flex-shrink: 0;
+  vertical-align: middle; title: 'Unsaved edits';
+}
+
+/* Rendered markdown */
+.note-body h1 { font-size: 1.25rem; margin: 0.4em 0 0.25em; }
+.note-body h2 { font-size: 1.05rem; margin: 0.7em 0 0.25em; }
+.note-body h3 { font-size: 0.92rem; margin: 0.7em 0 0.2em; }
+.note-body p  { margin-bottom: 0.55em; color: var(--muted); }
+.note-body code { background: var(--surface2); padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 0.88em; }
+.note-body pre { background: var(--surface2); padding: 10px; border-radius: 6px; overflow-x: auto; margin-bottom: 0.6em; }
+.note-body pre code { background: none; padding: 0; }
+.note-body a.wl { color: var(--accent-hi); text-decoration: none; cursor: pointer; }
+.note-body a.wl:hover { text-decoration: underline; }
+.note-body a.wl.broken { color: var(--node-orph); }
+.note-body blockquote { border-left: 3px solid var(--accent); padding-left: 12px; margin: 0.5em 0; color: var(--muted); }
+.note-body .callout { border-radius: 6px; padding: 9px 13px; margin: 0.6em 0; border-left: 3px solid; }
+.note-body .cl-note    { background: rgba(88,166,255,0.07);  border-color: var(--node-def); }
+.note-body .cl-tip,
+.note-body .cl-hint,
+.note-body .cl-success { background: rgba(63,185,80,0.07);   border-color: var(--node-hub); }
+.note-body .cl-warning,
+.note-body .cl-caution { background: rgba(255,166,87,0.07);  border-color: var(--tag-col); }
+.note-body .cl-danger,
+.note-body .cl-error   { background: rgba(248,81,73,0.07);   border-color: var(--node-orph); }
+.note-body .cl-info    { background: rgba(124,106,247,0.07); border-color: var(--accent); }
+.note-body .cl-title   { font-weight: 700; font-size: 0.8rem; margin-bottom: 4px; text-transform: capitalize; }
+.note-body hr  { border: none; border-top: 1px solid var(--border); margin: 0.9em 0; }
+.note-body ul,
+.note-body ol  { padding-left: 18px; margin-bottom: 0.55em; color: var(--muted); }
+.note-body li  { margin-bottom: 2px; }
+.note-body strong { color: var(--text); }
+.note-body .fm-block { background: var(--surface2); border-radius: 6px; padding: 8px 10px; margin-bottom: 0.8em; font-size: 0.78rem; color: var(--muted); }
+.note-body .fm-block b { color: var(--muted); font-weight: 600; }
+
+/* Loading overlay */
+#loading {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(13,17,23,0.92);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+}
+#loading.visible { display: flex; }
+.load-label { font-size: 0.95rem; }
+.load-sub   { font-size: 0.82rem; color: var(--muted); }
+.progress-bar  { width: 280px; height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.12s; }
+
+/* Footer */
+.footer-nav {
+  position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 24px;
+  background: rgba(22,27,34,0.92); padding: 6px 18px;
+  border-radius: 20px; box-shadow: 0 1px 8px rgba(0,0,0,0.4);
+  font-size: 0.72rem; z-index: 10;
+}
+.footer-nav a { color: var(--accent-hi); text-decoration: none; }
+.footer-nav a:hover { text-decoration: underline; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Chat tab ──────────────────────────────────────── */
+.chat-setup { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
+.chat-mode-row { display: flex; gap: 4px; }
+.chat-mode-btn {
+  flex: 1; padding: 5px; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted); font-size: 0.75rem; cursor: pointer; transition: all 0.12s;
+}
+.chat-mode-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.chat-cfg { display: flex; flex-direction: column; gap: 5px; }
+.chat-cfg-input {
+  width: 100%; padding: 6px 9px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); font-size: 0.78rem; outline: none;
+}
+.chat-cfg-input:focus { border-color: var(--accent); }
+.chat-status {
+  font-size: 0.72rem; padding: 5px 8px; border-radius: 5px; flex-shrink: 0;
+  background: var(--surface2); color: var(--muted); text-align: center;
+}
+.chat-status.ready { color: var(--node-hub); }
+.chat-status.error { color: var(--node-orph); }
+.chat-prog-bar { flex-shrink: 0; }
+.chat-prog-bar .progress-bar { width: 100%; }
+.chat-prog-lbl { font-size: 0.68rem; color: var(--muted); text-align: center; margin-top: 3px; }
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px; padding: 2px 0;
+}
+.chat-msg { font-size: 0.8rem; line-height: 1.55; }
+.chat-bubble {
+  padding: 7px 10px; border-radius: 7px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.chat-msg.user .chat-bubble {
+  background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.25);
+  color: var(--text);
+}
+.chat-msg.assistant .chat-bubble {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+}
+.chat-divider {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  font-size: 0.68rem; color: var(--muted); white-space: nowrap;
+}
+.chat-divider::before, .chat-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.chat-msg-acts { display: flex; gap: 4px; margin-top: 4px; }
+.chat-save-btn {
+  font-size: 0.68rem; padding: 2px 8px; border-radius: 4px;
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  cursor: pointer; transition: all 0.12s;
+}
+.chat-save-btn:hover { border-color: var(--accent); color: var(--accent-hi); }
+.chat-ctx-pill {
+  font-size: 0.68rem; padding: 3px 9px; border-radius: 10px; flex-shrink: 0;
+  background: rgba(124,106,247,0.08); border: 1px solid rgba(124,106,247,0.2);
+  color: var(--accent-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chat-input-row { display: flex; gap: 6px; flex-shrink: 0; align-items: flex-end; }
+.chat-textarea {
+  flex: 1; padding: 7px 10px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 7px; color: var(--text);
+  font-size: 0.82rem; outline: none; resize: none; font-family: inherit;
+  min-height: 54px; max-height: 110px;
+}
+.chat-textarea:focus { border-color: var(--accent); }
+.chat-send-btn {
+  width: 34px; height: 34px; border-radius: 7px; flex-shrink: 0;
+  background: var(--accent); border: none; color: #fff;
+  font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.12s;
+}
+.chat-send-btn:hover { opacity: 0.85; }
+.chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+/* Settings collapsible */
+#chat-settings { border: none; flex-shrink: 0; }
+#chat-settings summary {
+  list-style: none; cursor: pointer; padding: 5px 8px;
+  border-radius: 5px; font-size: 0.75rem; font-weight: 600;
+  color: var(--muted); background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  user-select: none;
+}
+#chat-settings summary:hover { color: var(--text); }
+#chat-settings summary::after { content: '▲'; font-size: 0.6rem; }
+#chat-settings[open] summary::after { content: '▼'; }
+#chat-settings summary::-webkit-details-marker { display: none; }
+.chat-settings-body { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
+.chat-search-sep {
+  font-size: 0.68rem; color: var(--muted); font-weight: 600;
+  letter-spacing: 0.05em; padding: 4px 0 2px;
+}
+#chat-api-model-select { size: 4; }
+.api-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+.api-preset {
+  font-size: 0.68rem; padding: 2px 8px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted); cursor: pointer; transition: all 0.12s; white-space: nowrap;
+}
+.api-preset:hover { border-color: var(--accent); color: var(--accent-hi); }
+.api-preset.active { border-color: var(--accent); background: rgba(124,106,247,0.12); color: var(--accent-hi); }
+
+/* ── Help button ─────────────────────────────────────────────────────────────*/
+.help-btn {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; margin-left: 6px;
+  border: 1.5px solid var(--border); background: var(--surface2);
+  color: var(--muted); font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+.help-btn:hover { border-color: var(--accent-hi); color: var(--accent-hi); }
+
+/* ── Help modal overlay ──────────────────────────────────────────────────────*/
+.help-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55); z-index: 200;
+  align-items: center; justify-content: center;
+}
+.help-overlay.open { display: flex; }
+
+.help-dialog {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  width: min(540px, 92vw); max-height: 82vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+
+.help-dialog-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 0; flex-shrink: 0;
+}
+.help-dialog-title { font-weight: 700; font-size: 0.95rem; color: var(--text); }
+
+/* ── Tabs ────────────────────────────────────────────────────────────────────*/
+.help-tabs {
+  display: flex; gap: 0; padding: 12px 18px 0; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.help-tab {
+  padding: 6px 14px; font-size: 0.78rem; font-weight: 600;
+  background: none; border: none; border-bottom: 2.5px solid transparent;
+  color: var(--muted); cursor: pointer; margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+}
+.help-tab:hover { color: var(--text); }
+.help-tab.active { color: var(--accent-hi); border-bottom-color: var(--accent-hi); }
+
+/* ── Panel body ──────────────────────────────────────────────────────────────*/
+.help-body { flex: 1; overflow-y: auto; padding: 18px; }
+.help-panel { display: none; }
+.help-panel.active { display: block; }
+
+.help-panel p {
+  font-size: 0.81rem; color: var(--muted); line-height: 1.65; margin-bottom: 10px;
+}
+.help-panel ul {
+  padding-left: 18px; margin: 0; display: flex; flex-direction: column; gap: 6px;
+}
+.help-panel li {
+  font-size: 0.81rem; color: var(--muted); line-height: 1.55;
+}
+.help-panel li strong { color: var(--text); }
+.help-panel code {
+  background: var(--surface2); padding: 1px 5px; border-radius: 3px;
+  font-family: monospace; font-size: 0.85em; color: var(--accent-hi);
+}
+.help-panel em { color: var(--text); font-style: italic; }
+
+/* ── Footer ──────────────────────────────────────────────────────────────────*/
+.help-footer {
+  padding: 12px 18px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ── Drop screen ─────────────────────────────────── -->
+<div id="drop-screen">
+  <div class="drop-logo">🧠</div>
+  <div class="drop-title">VaultMind</div>
+  <div class="drop-sub">Explore your Obsidian vault — force graph, semantic audit, local AI.<br>Everything stays in your browser. Zero data leaves your device.</div>
+  <div class="drop-actions">
+    <button class="btn btn-primary" id="btn-open-folder">Open Vault Folder</button>
+    <span style="color:var(--muted);font-size:0.85rem">or</span>
+    <label class="btn btn-secondary" style="cursor:pointer">
+      Drop a ZIP <input type="file" id="file-input" accept=".zip" style="display:none">
+    </label>
+  </div>
+  <div class="drop-zone" id="drop-zone">
+    <div style="font-size:2rem">📂</div>
+    <div style="font-weight:600;margin-top:8px;">Drop vault .zip here</div>
+    <p>Zip your Obsidian vault folder, drop it here.<br>Works in all browsers.</p>
+  </div>
+  <div class="drop-privacy">🔒 No server · No account · Works offline · Open source</div>
+</div>
+
+<!-- ── Loading ─────────────────────────────────────── -->
+<div id="loading">
+  <div style="font-size:2rem">⚙️</div>
+  <div class="load-label" id="load-label">Parsing vault…</div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <div class="load-sub" id="load-sub"></div>
+</div>
+
+<!-- ── App ────────────────────────────────────────── -->
+<div id="app">
+  <header id="header">
+    <span class="header-brand">VaultMind</span>
+    <span style="color:var(--border)">│</span>
+    <span class="header-vault" id="vault-name"></span>
+    <div class="header-stats" id="header-stats"></div>
+    <button class="btn btn-sm btn-secondary" id="btn-change" style="margin-left:8px">Change Vault</button>
+    <button class="help-btn" id="btn-help" title="Help">?</button>
+  </header>
+  <div id="body">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="notes">Notes</button>
+        <button class="tab-btn" data-tab="audit">Audit</button>
+      </div>
+      <div class="tab-panel active" id="tab-notes">
+        <input type="text" class="search-box" id="note-search" placeholder="Search notes…" autocomplete="off">
+        <div class="note-list" id="note-list"></div>
+      </div>
+      <div class="tab-panel" id="tab-audit">
+        <!-- built by JS -->
+      </div>
+    </aside>
+
+    <!-- Graph -->
+    <div id="graph-area">
+      <canvas id="graph-canvas"></canvas>
+      <div id="tag-filter-bar">
+        Filtered: <span id="tag-filter-label"></span>
+        <button class="clear-filter" onclick="clearTagFilter()">✕</button>
+      </div>
+      <div class="graph-controls">
+        <button class="ctrl-btn" id="btn-zin"  title="Zoom in">+</button>
+        <button class="ctrl-btn" id="btn-zout" title="Zoom out">−</button>
+        <button class="ctrl-btn" id="btn-fit"  title="Fit to screen">⊡</button>
+        <button class="ctrl-btn" id="btn-sim"  title="Pause/resume simulation">⏸</button>
+        <button class="ctrl-btn" id="btn-3d"  title="Toggle 3D view">3D</button>
+      </div>
+      <div id="rot-hint">0°</div>
+      <div class="graph-legend" id="graph-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#e879f9"></div>MOC</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--node-def)"></div>Note</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--node-orph)"></div>Orphan</div>
+        <div class="legend-item" style="color:var(--muted);font-style:italic">Colors = clusters</div>
+      </div>
+    </div>
+
+    <!-- Note preview -->
+    <div id="note-panel">
+      <div class="panel-header">
+        <span class="panel-title" id="panel-title"></span>
+        <button class="close-btn" id="btn-edit-note" title="Edit note" style="font-size:0.78rem">✏️</button>
+        <button class="close-btn" id="btn-chat-node" title="Focus chat on this note" style="font-size:0.75rem;width:auto;padding:0 6px">💬</button>
+        <button class="close-btn" id="btn-close-panel">✕</button>
+      </div>
+      <div class="panel-meta" id="panel-meta"></div>
+      <!-- Preview -->
+      <div class="note-body" id="panel-body"></div>
+      <!-- Editor -->
+      <div id="note-editor">
+        <div class="editor-toolbar">
+          <button class="ed-btn" data-ed="bold"   title="Bold (Ctrl+B)"><b>B</b></button>
+          <button class="ed-btn" data-ed="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+          <div class="ed-sep"></div>
+          <button class="ed-btn" data-ed="h1" title="Heading 1">H1</button>
+          <button class="ed-btn" data-ed="h2" title="Heading 2">H2</button>
+          <button class="ed-btn" data-ed="h3" title="Heading 3">H3</button>
+          <div class="ed-sep"></div>
+          <button class="ed-btn" data-ed="code"   title="Inline code">`c`</button>
+          <button class="ed-btn" data-ed="cblock" title="Code block">```</button>
+          <div class="ed-sep"></div>
+          <button class="ed-btn" data-ed="link"   title="Link">🔗</button>
+          <button class="ed-btn" data-ed="ul"     title="Bullet list">•</button>
+          <button class="ed-btn" data-ed="ol"     title="Numbered list">1.</button>
+          <button class="ed-btn" data-ed="todo"   title="Todo item">☐</button>
+          <div class="ed-sep"></div>
+          <button class="ed-btn" data-ed="hr"     title="Horizontal rule">—</button>
+          <button class="ed-btn" data-ed="quote"  title="Blockquote">"</button>
+        </div>
+        <textarea class="note-textarea" id="note-textarea" spellcheck="true" placeholder="Start writing…"></textarea>
+        <div class="editor-footer">
+          <label class="autosave-lbl">
+            <input type="checkbox" id="autosave-cb"> Autosave
+          </label>
+          <span class="ed-saved" id="ed-saved" style="display:none">✓ Saved</span>
+          <button class="btn btn-secondary btn-sm" id="btn-discard-edit">Discard</button>
+          <button class="btn btn-primary btn-sm" id="btn-save-note">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat panel (always visible) -->
+    <div id="chat-panel">
+      <div class="chat-panel-hdr">
+        <span class="chat-panel-title">Chat</span>
+        <div class="chat-ctx-pill" id="chat-ctx-pill" style="display:none;flex:1;margin-left:6px"></div>
+      </div>
+      <!-- Collapsible settings -->
+      <details id="chat-settings" open>
+        <summary id="chat-settings-summary">⚙ Settings</summary>
+        <div class="chat-settings-body">
+          <!-- Model setup -->
+          <div class="chat-setup">
+            <div class="chat-mode-row">
+              <button class="chat-mode-btn active" data-chat-mode="local">Local (WebGPU)</button>
+              <button class="chat-mode-btn" data-chat-mode="api">API</button>
+            </div>
+            <div class="chat-cfg" id="chat-local-cfg">
+              <select class="chat-cfg-input" id="chat-model-id">
+                <option value="gemma4-e4b">Gemma 4 E4B</option>
+                <option value="gemma4-e2b">Gemma 4 E2B (faster)</option>
+                <option value="qwen-1.5b">Qwen 2.5 1.5B</option>
+                <option value="qwen-0.5b">Qwen 2.5 0.5B</option>
+                <option value="smollm-1.7b">SmolLM2 1.7B</option>
+              </select>
+              <button class="btn btn-primary btn-sm" id="btn-load-model">Load Model</button>
+            </div>
+            <div class="chat-cfg" id="chat-api-cfg" style="display:none">
+              <div class="api-presets">
+                <button class="api-preset active" data-url="https://openrouter.ai/api/v1">OpenRouter</button>
+                <button class="api-preset" data-url="https://api.openai.com/v1">OpenAI</button>
+                <button class="api-preset" data-url="https://api.groq.com/openai/v1">Groq</button>
+                <button class="api-preset" data-url="http://localhost:1234/v1">LM Studio</button>
+                <button class="api-preset" data-url="http://localhost:11434">Ollama</button>
+              </div>
+              <input class="chat-cfg-input" id="chat-api-url" placeholder="Base URL (OpenAI-compatible)" value="https://openrouter.ai/api/v1">
+              <input class="chat-cfg-input" id="chat-api-key" type="password" placeholder="API key (blank for LM Studio / Ollama)">
+              <div style="display:flex;gap:4px">
+                <input class="chat-cfg-input" id="chat-api-model" placeholder="Model ID" style="flex:1;min-width:0">
+                <button class="btn btn-secondary btn-sm" id="btn-fetch-models" title="Discover models from endpoint" style="flex-shrink:0">↻</button>
+              </div>
+              <input class="chat-cfg-input" id="chat-model-filter" placeholder="Filter models…" style="display:none;font-size:0.75rem">
+              <select class="chat-cfg-input" id="chat-api-model-select" style="display:none;max-height:140px"></select>
+            </div>
+          </div>
+          <!-- Web search setup -->
+          <div class="chat-search-sep">🌐 Web Search</div>
+          <select class="chat-cfg-input" id="search-provider">
+            <option value="none">No web search</option>
+            <option value="tavily">Tavily (free tier)</option>
+            <option value="brave">Brave Search</option>
+            <option value="searxng">SearXNG (self-hosted)</option>
+          </select>
+          <input class="chat-cfg-input" id="search-key" type="password" placeholder="API key" style="display:none">
+          <input class="chat-cfg-input" id="search-url" placeholder="SearXNG instance URL" style="display:none">
+        </div>
+      </details>
+      <!-- Model status -->
+      <div class="chat-status" id="chat-status">No model loaded</div>
+      <div id="chat-prog" style="display:none" class="chat-prog-bar">
+        <div class="progress-bar"><div class="progress-fill" id="chat-prog-fill" style="width:0%"></div></div>
+      </div>
+      <!-- RAG status -->
+      <div class="chat-status" id="chat-rag-status" style="display:none;font-size:0.68rem"></div>
+      <!-- Messages -->
+      <div class="chat-messages" id="chat-messages">
+        <div data-placeholder style="text-align:center;color:var(--muted);font-size:0.75rem;margin-top:24px;line-height:1.7">Load a model or set an API key,<br>then ask anything about your vault.</div>
+      </div>
+      <!-- Input -->
+      <div class="chat-input-row">
+        <textarea class="chat-textarea" id="chat-textarea" placeholder="Ask about your vault…" rows="2"></textarea>
+        <button class="chat-send-btn" id="chat-stop" style="display:none;background:var(--node-orph)" title="Stop">■</button>
+        <button class="chat-send-btn" id="chat-search-send" disabled title="Web search + send" style="display:none;background:#0ea5e9;font-size:0.85rem">🌐</button>
+        <button class="chat-send-btn" id="chat-send" disabled title="Send">↑</button>
+      </div>
+    </div>
+
+  </div><!-- #body -->
+</div><!-- #app -->
+
+<div id="tooltip"></div>
+
+<!-- ── Help modal ──────────────────────────────────────────────────────────── -->
+<div class="help-overlay" id="help-modal">
+  <div class="help-dialog">
+    <div class="help-dialog-hdr">
+      <span class="help-dialog-title">🧠 VaultMind — Help</span>
+      <button class="close-btn" id="help-close">✕</button>
+    </div>
+
+    <div class="help-tabs">
+      <button class="help-tab active" data-tab="graph">🕸 Graph</button>
+      <button class="help-tab" data-tab="chat">💬 Chat</button>
+      <button class="help-tab" data-tab="editor">✏️ Editor</button>
+      <button class="help-tab" data-tab="search">🔍 Search</button>
+    </div>
+
+    <div class="help-body">
+
+      <!-- Graph -->
+      <div class="help-panel active" id="hp-graph">
+        <p>An interactive force-directed graph of your entire vault. Each node is a note; each edge is a <code>[[wikilink]]</code>.</p>
+        <ul>
+          <li><strong>Click a node</strong> — opens the note preview panel.</li>
+          <li><strong>Drag a node</strong> — pin it; drag away to move it freely.</li>
+          <li><strong>Scroll / pinch</strong> — smooth zoom centred on cursor.</li>
+          <li><strong>Drag canvas</strong> (2D) — pan the view.</li>
+          <li><strong>3D button</strong> — switch to 3D perspective. Drag to rotate on all axes; the blob stays centred.</li>
+          <li><strong>⏸ Pause</strong> — freeze the simulation.</li>
+          <li><strong>⊞ Fit</strong> — reset zoom to fit all nodes.</li>
+          <li><strong>+ / −</strong> — add / remove a random connection (demo).</li>
+        </ul>
+        <p style="margin-top:8px"><strong>Node colours</strong> reflect clusters detected by the force layout. Red = orphan (no links). Pink = MOC.</p>
+      </div>
+
+      <!-- Chat -->
+      <div class="help-panel" id="hp-chat">
+        <p>Ask questions about your vault. Context is pulled from the selected note and its neighbours (micro-RAG).</p>
+        <ul>
+          <li><strong>Local (WebGPU)</strong> — runs a small LLM entirely in your browser. No data leaves the device. Requires a WebGPU-capable browser (Chrome 113+).</li>
+          <li><strong>API</strong> — connects to any OpenAI-compatible endpoint. Works with OpenRouter, Groq, LM Studio, Ollama, and more.</li>
+          <li><strong>Click a node</strong> then ask — chat automatically scopes context to that note and its 1-hop neighbours.</li>
+          <li><strong>💬 button</strong> on the note panel — focuses the chat on the current note.</li>
+          <li><strong>🌐 button</strong> in the chat bar — toggle a live web search to augment answers.</li>
+          <li><strong>Settings collapse</strong> automatically when a model is loaded.</li>
+        </ul>
+        <p style="margin-top:6px"><strong>LM Studio / Ollama?</strong> Enable CORS: in LM Studio open <em>Local Server → Server Settings → Enable CORS</em>. For Ollama restart with <code>OLLAMA_ORIGINS="*" ollama serve</code>.</p>
+      </div>
+
+      <!-- Editor -->
+      <div class="help-panel" id="hp-editor">
+        <p>Click any note to open the preview panel, then press <strong>✏️</strong> to edit it in place.</p>
+        <ul>
+          <li><strong>Toolbar</strong> — B / I wrap selection; H1–H3 prefix the current line; <code>`c`</code> inline code; <code>```</code> code block; 🔗 link; • / 1. / ☐ list items; — rule; " quote.</li>
+          <li><strong>Ctrl / ⌘ + B / I / S</strong> — bold, italic, save shortcuts.</li>
+          <li><strong>Autosave</strong> — tick the checkbox; saves to disk 1.5 s after each keystroke.</li>
+          <li><strong>Save</strong> — writes back to the original <code>.md</code> file (requires the vault to be opened as a folder, not a ZIP).</li>
+          <li><strong>Discard</strong> — restores the last saved version.</li>
+          <li><strong>Unsaved draft</strong> — if you switch notes without saving, your edits are kept in memory (amber <em>● unsaved draft</em> badge). Come back and continue, or Discard.</li>
+          <li>A small <strong>amber dot</strong> appears next to the note name in the sidebar while unsaved changes exist.</li>
+        </ul>
+      </div>
+
+      <!-- Search -->
+      <div class="help-panel" id="hp-search">
+        <p>The search box in the Notes sidebar searches <strong>full note bodies</strong>, not just titles.</p>
+        <ul>
+          <li><strong>Multi-word query</strong> — each word is scored independently. A note mentioning all terms more often ranks higher.</li>
+          <li><strong>Title hits</strong> are weighted 10× body hits, so a note whose name matches always floats to the top.</li>
+          <li><strong>Snippets</strong> — a short extract around the first match is shown below each result, with your query terms highlighted.</li>
+          <li><strong>No query</strong> — list reverts to link-degree order (most connected notes first).</li>
+          <li><strong>Tip:</strong> search is instant and entirely in-memory — no network, no indexing step.</li>
+        </ul>
+      </div>
+
+    </div><!-- /.help-body -->
+
+    <div class="help-footer">
+      <button class="btn btn-primary btn-sm" id="help-close-2">Got it</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer-nav">
+  <a href="https://naklitechie.github.io/">⬅ More Projects</a>
+  <a href="https://github.com/NakliTechie/VaultMind">⌨ Source</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+<script>
+'use strict';
+
+// ── Data ─────────────────────────────────────────────────────────────────────
+
+// note shape: { path, name, filename, fm, body, aliases, wikilinks:Set, tags:Set, inDeg, outDeg }
+const vault = {
+  byName: new Map(),   // lowercase filename → note  (primary key)
+  byPath: new Map(),   // path → note
+  edges:  [],          // { source: lc-name, target: lc-name, resolved: bool }
+  vaultName: '',
+  dirHandle: null,     // FileSystemDirectoryHandle — set when folder is opened
+};
+
+// graph sim state
+const g = {
+  nodes: [],  // { id, name, note, x, y, vx, vy, r, deg }
+  edges: [],  // { s: node, t: node }
+  alpha: 1,
+  paused: false,
+  raf: null,
+};
+
+// view transform
+const view = {
+  x: 0, y: 0, scale: 1,
+  targetX: 0, targetY: 0, targetScale: 1,
+  angle: 0,
+  drag: null, rotDrag: null, orbitDrag: null,
+  selected: null, hovered: null, activeTag: null,
+  mode3d: false, azimuth: 0.5, elevation: 0.35,
+};
+
+// cluster palette (for MOC-based coloring)
+const CLUSTER_PALETTE = ['#7c6af7','#58a6ff','#3fb950','#ffa657','#f85149','#e879f9','#22d3ee','#facc15','#fb923c','#a3e635'];
+
+// ── Markdown Parser ───────────────────────────────────────────────────────────
+
+function parseFrontmatter(text) {
+  const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  if (!m) return { fm: {}, body: text };
+  const fm = {};
+  for (const line of m[1].split('\n')) {
+    const kv = line.match(/^([\w-]+)\s*:\s*(.+)$/);
+    if (!kv) continue;
+    const [, k, v] = kv;
+    const val = v.trim();
+    if (val.startsWith('[')) {
+      try { fm[k] = JSON.parse(val.replace(/'/g, '"')); } catch { fm[k] = val; }
+    } else {
+      fm[k] = val.replace(/^["']|["']$/g, '');
+    }
+  }
+  return { fm, body: m[2] };
+}
+
+function extractWikilinks(text) {
+  const out = new Set();
+  const re = /!?\[\[([^\]|#\n]+?)(?:#[^\]|]*)?(?: *\|[^\]]*)?\]\]/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const t = m[1].trim();
+    if (/\.(png|jpe?g|gif|svg|webp|bmp|mp[34]|wav|ogg|pdf|excalidraw)$/i.test(t)) continue;
+    out.add(t);
+  }
+  return out;
+}
+
+function extractTags(body, fm) {
+  const out = new Set();
+  // Case-insensitive key lookup (handles Tags, tags, TAG)
+  const fmKey = Object.keys(fm).find(k => k.toLowerCase() === 'tags' || k.toLowerCase() === 'tag');
+  const rawTags = fmKey ? fm[fmKey] : [];
+  const tagArr = Array.isArray(rawTags) ? rawTags : String(rawTags).split(/[,;]+/);
+  for (const t of tagArr) {
+    const clean = t.trim().replace(/^["'#\s]+|["'\s]+$/g, '');
+    if (clean) out.add(clean.toLowerCase());
+  }
+  const re = /(?:^|[\s,(])#([a-zA-Z][\w/-]{0,49})/gm;
+  let m;
+  while ((m = re.exec(body)) !== null) out.add(m[1].toLowerCase());
+  return out;
+}
+
+function detectMoc(name, body, wikilinks) {
+  // Name-based: explicit MOC/index keywords
+  if (/\b(index|moc|map of content|start here|home|dashboard|contents?|toc|overview|hub)\b/i.test(name)) return true;
+  // Content-based: wikilink text inflates raw word count (~3-5 words each),
+  // so ratio threshold needs to be ~16. Also catch very short notes with any links.
+  const words = body.trim().split(/\s+/).filter(Boolean).length;
+  const links = wikilinks.size;
+  if (links >= 4 && words < links * 16 && words < 400) return true;
+  if (links >= 2 && words < 50) return true;  // tiny nav note
+  return false;
+}
+
+function parseNote(path, content) {
+  const { fm, body } = parseFrontmatter(content);
+  const filename = path.split('/').pop().replace(/\.md$/i, '');
+  const name     = (fm.title && String(fm.title).trim()) || filename;
+  const aliases  = Array.isArray(fm.aliases) ? fm.aliases : (fm.aliases ? [fm.aliases] : []);
+  const wikilinks = extractWikilinks(body);
+  const isMoc = detectMoc(name, body, wikilinks);
+  return { path, name, filename, fm, body, aliases, wikilinks, tags: extractTags(body, fm), isMoc };
+}
+
+// ── Vault Processor ───────────────────────────────────────────────────────────
+
+async function processFiles(files) {
+  vault.byName.clear(); vault.byPath.clear(); vault.edges = [];
+
+  const total = files.length;
+  setProgress(5, `Parsing ${total} notes…`);
+
+  // Pass 1 — parse
+  for (let i = 0; i < files.length; i++) {
+    const { path, content } = files[i];
+    if (i % 100 === 0) { setProgress(5 + (i / total) * 40, `Parsing ${i} / ${total}…`); await tick(); }
+    if (/\/(\.obsidian|\.trash|node_modules)\//.test(path)) continue;
+    const note = parseNote(path, content);
+    const key  = note.filename.toLowerCase();
+    vault.byPath.set(path, note);
+    if (!vault.byName.has(key)) vault.byName.set(key, note);
+    for (const alias of note.aliases) {
+      const ak = alias.toLowerCase();
+      if (!vault.byName.has(ak)) vault.byName.set(ak, note);
+    }
+  }
+
+  setProgress(50, 'Resolving links…'); await tick();
+
+  // Resolve helper: handles "folder/Note" style links
+  const resolve = (raw) => {
+    const base = raw.toLowerCase().split('/').pop();
+    return vault.byName.get(base) ?? vault.byName.get(raw.toLowerCase()) ?? null;
+  };
+
+  // Pass 2 — edges
+  for (const note of vault.byPath.values()) {
+    for (const link of note.wikilinks) {
+      const target = resolve(link);
+      vault.edges.push({ source: note.filename.toLowerCase(), target: target ? target.filename.toLowerCase() : link.toLowerCase(), resolved: !!target });
+    }
+  }
+
+  setProgress(65, 'Computing degrees…'); await tick();
+
+  // Degrees
+  for (const note of vault.byPath.values()) { note.inDeg = 0; note.outDeg = 0; }
+  for (const e of vault.edges) {
+    const s = vault.byName.get(e.source), t = vault.byName.get(e.target);
+    if (s) s.outDeg++;
+    if (t && e.resolved) t.inDeg++;
+  }
+
+  setProgress(80, 'Building graph…'); await tick();
+  buildGraph();
+  setProgress(100, 'Done!'); await tick();
+}
+
+// ── Force Graph ───────────────────────────────────────────────────────────────
+
+const SIM = { repulsion: 900, spring: 0.07, restLen: 85, center: 0.012, damp: 0.84, decay: 0.004, minAlpha: 0.001 };
+
+function buildGraph() {
+  const notes  = Array.from(vault.byPath.values());
+  const idMap  = new Map();
+
+  g.nodes = notes.map(note => {
+    const deg = (note.inDeg || 0) + (note.outDeg || 0);
+    // MOC nodes are drawn slightly larger with a diamond-ish feel (bigger radius)
+    const r   = note.isMoc
+      ? Math.max(8, Math.min(18, 7 + Math.sqrt(deg) * 2))
+      : Math.max(4, Math.min(14, 4 + Math.sqrt(deg) * 2));
+    const node = { id: note.filename.toLowerCase(), name: note.name, note, r, deg, isMoc: note.isMoc,
+                   clusterColor: null, cluster: -1,
+                   x: (Math.random() - 0.5) * 600, y: (Math.random() - 0.5) * 600, vx: 0, vy: 0,
+                   z: 0, vz: 0 };
+    idMap.set(node.id, node);
+    return node;
+  });
+
+  g.edges = vault.edges
+    .filter(e => e.resolved)
+    .map(e => ({ s: idMap.get(e.source), t: idMap.get(e.target) }))
+    .filter(e => e.s && e.t && e.s !== e.t);
+
+  // ── Cluster assignment ──────────────────────────────────────────────────────
+  // Step 1: assign MOC nodes their own cluster color
+  const mocs = g.nodes.filter(n => n.isMoc);
+  mocs.forEach((moc, i) => {
+    moc.cluster      = i;
+    moc.clusterColor = CLUSTER_PALETTE[i % CLUSTER_PALETTE.length];
+  });
+
+  // Step 2: build reverse adjacency (who links TO each node)
+  const adjIn = new Map(); // id → [source nodes]
+  for (const e of g.edges) {
+    if (!adjIn.has(e.t.id)) adjIn.set(e.t.id, []);
+    adjIn.get(e.t.id).push(e.s);
+  }
+
+  // Step 3: each non-MOC node inherits cluster from the MOC that directly links to it
+  for (const node of g.nodes) {
+    if (node.isMoc) continue;
+    const parents = adjIn.get(node.id) || [];
+    const mocParent = parents.find(p => p.isMoc);
+    if (mocParent) {
+      node.cluster      = mocParent.cluster;
+      node.clusterColor = mocParent.clusterColor;
+    }
+  }
+
+  g.alpha = 1; g.paused = false;
+}
+
+function simStep() {
+  const nodes = g.nodes, n = nodes.length;
+  // Repulsion
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const a = nodes[i], b = nodes[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d2 = dx * dx + dy * dy + 1;
+      const d  = Math.sqrt(d2);
+      const f  = SIM.repulsion / d2;
+      const fx = (dx / d) * f, fy = (dy / d) * f;
+      a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
+    }
+  }
+  // Spring
+  for (const e of g.edges) {
+    const dx = e.t.x - e.s.x, dy = e.t.y - e.s.y;
+    const d  = Math.sqrt(dx * dx + dy * dy) || 1;
+    const f  = (d - SIM.restLen) * SIM.spring;
+    const fx = (dx / d) * f, fy = (dy / d) * f;
+    e.s.vx += fx; e.s.vy += fy; e.t.vx -= fx; e.t.vy -= fy;
+  }
+  // Center + integrate
+  for (const node of nodes) {
+    node.vx = (node.vx - node.x * SIM.center) * SIM.damp;
+    node.vy = (node.vy - node.y * SIM.center) * SIM.damp;
+    node.x += node.vx; node.y += node.vy;
+  }
+  g.alpha = Math.max(0, g.alpha - SIM.decay);
+}
+
+function simStep3d() {
+  const nodes = g.nodes, n = nodes.length;
+  // Repulsion (3D)
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const a = nodes[i], b = nodes[j];
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+      const d2 = dx * dx + dy * dy + dz * dz + 1;
+      const d  = Math.sqrt(d2);
+      const f  = SIM.repulsion / d2;
+      const fx = (dx / d) * f, fy = (dy / d) * f, fz = (dz / d) * f;
+      a.vx -= fx; a.vy -= fy; a.vz -= fz;
+      b.vx += fx; b.vy += fy; b.vz += fz;
+    }
+  }
+  // Spring (3D)
+  for (const e of g.edges) {
+    const dx = e.t.x - e.s.x, dy = e.t.y - e.s.y, dz = e.t.z - e.s.z;
+    const d  = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    const f  = (d - SIM.restLen) * SIM.spring;
+    const fx = (dx / d) * f, fy = (dy / d) * f, fz = (dz / d) * f;
+    e.s.vx += fx; e.s.vy += fy; e.s.vz += fz;
+    e.t.vx -= fx; e.t.vy -= fy; e.t.vz -= fz;
+  }
+  // Center + integrate
+  for (const node of nodes) {
+    node.vx = (node.vx - node.x * SIM.center) * SIM.damp;
+    node.vy = (node.vy - node.y * SIM.center) * SIM.damp;
+    node.vz = (node.vz - node.z * SIM.center) * SIM.damp;
+    node.x += node.vx; node.y += node.vy; node.z += node.vz;
+  }
+  g.alpha = Math.max(0, g.alpha - SIM.decay);
+}
+
+// ── Canvas Renderer ───────────────────────────────────────────────────────────
+
+const canvas = document.getElementById('graph-canvas');
+const ctx    = canvas.getContext('2d');
+let dpr      = window.devicePixelRatio || 1;
+
+function resizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  const { width, height } = canvas.getBoundingClientRect();
+  canvas.width  = width  * dpr;
+  canvas.height = height * dpr;
+}
+
+function nodeColor(node, dimmed) {
+  if (dimmed) return 'rgba(255,255,255,0.08)';
+  if (node === view.selected) return '#ffd700';
+  if (node.isMoc)             return '#e879f9';          // MOC = magenta
+  if (node.clusterColor)      return node.clusterColor;  // cluster color
+  if (node.deg === 0)         return '#f85149';          // orphan
+  return '#58a6ff';                                       // unclassified
+}
+
+function drawFrame() {
+  if (!g.paused && g.alpha > SIM.minAlpha) {
+    view.mode3d ? simStep3d() : simStep();
+  }
+
+  // Smooth zoom & pan interpolation
+  view.scale += (view.targetScale - view.scale) * 0.14;
+  view.x     += (view.targetX - view.x) * 0.14;
+  view.y     += (view.targetY - view.y) * 0.14;
+
+  const { width: W, height: H } = canvas.getBoundingClientRect();
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.save();
+  // In 3D mode anchor to canvas centre only (centroid subtracted in projection)
+  ctx.translate(view.mode3d ? W / 2 : view.x + W / 2, view.mode3d ? H / 2 : view.y + H / 2);
+  if (!view.mode3d) ctx.rotate(view.angle);
+  ctx.scale(view.scale, view.scale);
+
+  const isDimmed = node => view.activeTag && !node.note.tags.has(view.activeTag);
+
+  if (view.mode3d) {
+    // ── 3D perspective rendering ──────────────────────────────────────────────
+    const cosAz = Math.cos(view.azimuth),  sinAz = Math.sin(view.azimuth);
+    const cosEl = Math.cos(view.elevation), sinEl = Math.sin(view.elevation);
+    const FOV   = 800;
+
+    // Compute centroid so rotation always pivots around the blob's centre
+    let cx3 = 0, cy3 = 0, cz3 = 0;
+    for (const node of g.nodes) { cx3 += node.x; cy3 += node.y; cz3 += (node.z || 0); }
+    const n3 = g.nodes.length || 1;
+    cx3 /= n3; cy3 /= n3; cz3 /= n3;
+
+    // Project all nodes centred at origin (store results on node for hit-testing)
+    for (const node of g.nodes) {
+      const dx = node.x - cx3, dy = node.y - cy3, dz = (node.z || 0) - cz3;
+      const y1 = dy * cosEl - dz * sinEl;
+      const z1 = dy * sinEl + dz * cosEl;
+      const x2 = dx * cosAz + z1 * sinAz;
+      const z2 = -dx * sinAz + z1 * cosAz;
+      const ps  = FOV / (FOV + z2 + 200);
+      node._sx = x2 * ps;
+      node._sy = y1 * ps;
+      node._ps = ps;
+      node._z2 = z2;
+    }
+
+    // Edges (depth-fogged)
+    for (const e of g.edges) {
+      const dim = isDimmed(e.s) || isDimmed(e.t);
+      const mz  = (e.s._z2 + e.t._z2) / 2;
+      const fog = Math.max(0.04, Math.min(1, (mz + 600) / 900));
+      ctx.strokeStyle = dim ? 'rgba(255,255,255,0.03)' : `rgba(88,166,255,${(0.25 * fog).toFixed(2)})`;
+      ctx.lineWidth   = 0.8 * fog;
+      ctx.beginPath();
+      ctx.moveTo(e.s._sx, e.s._sy);
+      ctx.lineTo(e.t._sx, e.t._sy);
+      ctx.stroke();
+    }
+
+    // Z-sorted nodes (painter's algorithm: far first)
+    const sorted = [...g.nodes].sort((a, b) => a._z2 - b._z2);
+    for (const node of sorted) {
+      const dimmed = isDimmed(node);
+      const col    = nodeColor(node, dimmed);
+      const r      = Math.max(1.5, node.r * node._ps);
+      const fog    = Math.max(0.25, Math.min(1, (node._z2 + 600) / 900));
+      const sel    = node === view.selected;
+      const hov    = node === view.hovered;
+
+      ctx.globalAlpha = dimmed ? 0.08 : fog;
+      ctx.beginPath();
+      ctx.arc(node._sx, node._sy, r, 0, Math.PI * 2);
+      ctx.fillStyle   = col + '2a';
+      ctx.fill();
+      ctx.strokeStyle = col;
+      ctx.lineWidth   = (sel ? 2.5 : 1.4) * node._ps;
+      ctx.stroke();
+
+      if (sel || hov) {
+        ctx.shadowColor = col;
+        ctx.shadowBlur  = sel ? 12 : 6;
+        ctx.beginPath();
+        ctx.arc(node._sx, node._sy, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+      ctx.globalAlpha = 1;
+
+      if (view.scale * node._ps > 0.45 || sel || hov) {
+        const sz = Math.max(6, 11 / view.scale);
+        ctx.globalAlpha = dimmed ? 0.08 : fog * 0.85;
+        ctx.font         = `${sel ? 'bold ' : ''}${sz}px system-ui,sans-serif`;
+        ctx.fillStyle    = sel ? '#ffd700' : hov ? '#fff' : 'rgba(201,209,217,0.85)';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'top';
+        const label = node.name.length > 22 ? node.name.slice(0, 20) + '…' : node.name;
+        ctx.fillText(label, node._sx, node._sy + r + 2);
+        ctx.globalAlpha = 1;
+      }
+    }
+  } else {
+    // ── 2D rendering ─────────────────────────────────────────────────────────
+    ctx.lineWidth = 0.7;
+    for (const e of g.edges) {
+      const dim = isDimmed(e.s) || isDimmed(e.t);
+      ctx.strokeStyle = dim ? 'rgba(255,255,255,0.04)' : 'rgba(88,166,255,0.18)';
+      ctx.beginPath();
+      ctx.moveTo(e.s.x, e.s.y);
+      ctx.lineTo(e.t.x, e.t.y);
+      ctx.stroke();
+    }
+
+    for (const node of g.nodes) {
+      const dimmed = isDimmed(node);
+      const col = nodeColor(node, dimmed);
+      const sel = node === view.selected;
+      const hov = node === view.hovered;
+
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+      ctx.fillStyle   = col + '2a';
+      ctx.fill();
+      ctx.strokeStyle = col;
+      ctx.lineWidth   = sel ? 2.5 : 1.4;
+      ctx.stroke();
+
+      if (sel || hov) {
+        ctx.shadowColor = col;
+        ctx.shadowBlur  = sel ? 12 : 6;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      if (view.scale > 0.55 || sel || hov) {
+        const sz = Math.max(8, 11 / view.scale);
+        ctx.font         = `${sel ? 'bold ' : ''}${sz}px system-ui,sans-serif`;
+        ctx.fillStyle    = sel ? '#ffd700' : hov ? '#fff' : 'rgba(201,209,217,0.8)';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'top';
+        const label = node.name.length > 22 ? node.name.slice(0, 20) + '…' : node.name;
+        ctx.fillText(label, node.x, node.y + node.r + 3);
+      }
+    }
+  }
+
+  ctx.restore();
+  g.raf = requestAnimationFrame(drawFrame);
+}
+
+// ── Canvas Interaction ────────────────────────────────────────────────────────
+
+function worldPos(cx, cy) {
+  const { width: W, height: H } = canvas.getBoundingClientRect();
+  // Undo: translate(view.x + W/2, view.y + H/2) → rotate(angle) → scale(scale)
+  const tx  = cx - W / 2 - view.x;
+  const ty  = cy - H / 2 - view.y;
+  const cos = Math.cos(-view.angle);
+  const sin = Math.sin(-view.angle);
+  return {
+    x: (tx * cos - ty * sin) / view.scale,
+    y: (tx * sin + ty * cos) / view.scale,
+  };
+}
+
+function hitTest(cx, cy) {
+  if (view.mode3d) {
+    // In 3D mode: undo translate + scale to get into _sx/_sy coordinate space
+    const { width: W, height: H } = canvas.getBoundingClientRect();
+    const wx = (cx - W / 2 - view.x) / view.scale;
+    const wy = (cy - H / 2 - view.y) / view.scale;
+    // Iterate front-to-back (highest _z2 first = closest to viewer)
+    const sorted = [...g.nodes].sort((a, b) => (b._z2 ?? 0) - (a._z2 ?? 0));
+    for (const n of sorted) {
+      if (!('_sx' in n)) continue;
+      const r  = Math.max(1.5, n.r * n._ps) + 5 / view.scale;
+      const dx = (n._sx ?? 0) - wx, dy = (n._sy ?? 0) - wy;
+      if (dx * dx + dy * dy <= r * r) return n;
+    }
+    return null;
+  }
+  const { x, y } = worldPos(cx, cy);
+  for (let i = g.nodes.length - 1; i >= 0; i--) {
+    const n = g.nodes[i];
+    const dx = n.x - x, dy = n.y - y;
+    if (dx * dx + dy * dy <= (n.r + 5) * (n.r + 5)) return n;
+  }
+  return null;
+}
+
+const tooltip = document.getElementById('tooltip');
+
+// Smooth zoom toward cursor — exponential so trackpad feels linear
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  // exp(-deltaY * k) gives proportional zoom; small trackpad events stay small
+  const factor   = Math.exp(-e.deltaY * 0.003);
+  const newScale = Math.max(0.08, Math.min(10, view.targetScale * factor));
+  const rect     = canvas.getBoundingClientRect();
+  // Mouse offset from canvas centre (in screen space)
+  const mx = e.clientX - rect.left - rect.width  / 2;
+  const my = e.clientY - rect.top  - rect.height / 2;
+  // Shift pan so the world-point under the cursor stays fixed
+  view.targetX = mx - (mx - view.targetX) * (newScale / view.targetScale);
+  view.targetY = my - (my - view.targetY) * (newScale / view.targetScale);
+  view.targetScale = newScale;
+}, { passive: false });
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+const rotHint = document.getElementById('rot-hint');
+
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  if (e.button === 2) {
+    if (!view.mode3d) {
+      // 2D only: right-click drag → rotate around canvas centre
+      const cx = rect.width / 2, cy = rect.height / 2;
+      view.rotDrag = {
+        startAngle: Math.atan2(e.clientY - rect.top - cy, e.clientX - rect.left - cx),
+        viewAngle:  view.angle,
+      };
+      canvas.classList.add('rotating');
+    }
+    return;
+  }
+  const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+  if (hit) { selectNode(hit); }
+  else if (view.mode3d) {
+    // Left-drag on empty space in 3D → orbit
+    view.orbitDrag = { sx: e.clientX, sy: e.clientY, az0: view.azimuth, el0: view.elevation };
+    canvas.classList.add('grabbing');
+  } else {
+    view.drag = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y };
+    canvas.classList.add('grabbing');
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  if (view.rotDrag && !view.mode3d) {
+    const cx    = rect.width / 2, cy = rect.height / 2;
+    const angle = Math.atan2(e.clientY - rect.top - cy, e.clientX - rect.left - cx);
+    view.angle  = view.rotDrag.viewAngle + (angle - view.rotDrag.startAngle);
+    const deg   = Math.round(view.angle * 180 / Math.PI);
+    rotHint.textContent = `${((deg % 360) + 360) % 360}°`;
+    rotHint.classList.add('visible');
+    return;
+  }
+  if (view.orbitDrag) {
+    const dx = e.clientX - view.orbitDrag.sx;
+    const dy = e.clientY - view.orbitDrag.sy;
+    view.azimuth   = view.orbitDrag.az0 + dx * 0.005;
+    view.elevation = Math.max(-1.4, Math.min(1.4, view.orbitDrag.el0 - dy * 0.005));
+    return;
+  }
+  if (view.drag) {
+    const nx = view.drag.vx + (e.clientX - view.drag.sx);
+    const ny = view.drag.vy + (e.clientY - view.drag.sy);
+    view.x = nx; view.y = ny;
+    view.targetX = nx; view.targetY = ny;  // pan is instant, no lerp
+    return;
+  }
+  const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+  view.hovered = hit;
+  if (hit) {
+    tooltip.style.display = 'block';
+    tooltip.style.left    = (e.clientX + 14) + 'px';
+    tooltip.style.top     = (e.clientY - 10) + 'px';
+    tooltip.textContent   = `${hit.name} · ${hit.deg} link${hit.deg !== 1 ? 's' : ''}`;
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  view.drag = null; view.rotDrag = null; view.orbitDrag = null;
+  canvas.classList.remove('grabbing', 'rotating');
+  rotHint.classList.remove('visible');
+});
+canvas.addEventListener('mouseleave', () => {
+  view.drag = null; view.rotDrag = null; view.orbitDrag = null;
+  canvas.classList.remove('grabbing', 'rotating');
+  rotHint.classList.remove('visible');
+  tooltip.style.display = 'none';
+});
+
+// Touch — pan + pinch-zoom
+let lastTouchDist = 0;
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+    return;
+  }
+  const t = e.touches[0];
+  const r = canvas.getBoundingClientRect();
+  const hit = hitTest(t.clientX - r.left, t.clientY - r.top);
+  if (hit) selectNode(hit);
+  else view.drag = { sx: t.clientX, sy: t.clientY, vx: view.x, vy: view.y };
+}, { passive: true });
+canvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    const dx   = e.touches[0].clientX - e.touches[1].clientX;
+    const dy   = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (lastTouchDist > 0) {
+      const factor   = dist / lastTouchDist;
+      view.targetScale = Math.max(0.08, Math.min(10, view.targetScale * factor));
+    }
+    lastTouchDist = dist;
+    return;
+  }
+  if (view.drag && e.touches.length === 1) {
+    const t = e.touches[0];
+    const nx = view.drag.vx + (t.clientX - view.drag.sx);
+    const ny = view.drag.vy + (t.clientY - view.drag.sy);
+    view.x = nx; view.y = ny; view.targetX = nx; view.targetY = ny;
+  }
+}, { passive: true });
+canvas.addEventListener('touchend', () => { view.drag = null; lastTouchDist = 0; });
+
+function fitGraph() {
+  if (!g.nodes.length) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of g.nodes) {
+    minX = Math.min(minX, n.x - n.r); minY = Math.min(minY, n.y - n.r);
+    maxX = Math.max(maxX, n.x + n.r); maxY = Math.max(maxY, n.y + n.r);
+  }
+  const { width: W, height: H } = canvas.getBoundingClientRect();
+  if (W === 0 || H === 0) return;
+  const s = Math.min(0.92, (W / (maxX - minX)) * 0.88, (H / (maxY - minY)) * 0.88);
+  const x = -((minX + maxX) / 2) * s;
+  const y = -((minY + maxY) / 2) * s;
+  view.targetScale = s; view.targetX = x; view.targetY = y;
+  // Also snap immediately so the first frame isn't from (0,0)
+  view.scale = s; view.x = x; view.y = y;
+}
+
+// ── Markdown Renderer ─────────────────────────────────────────────────────────
+
+function renderMd(md, depth = 0) {
+  const lines = md.split('\n');
+  let html = '', inCode = false, codeLang = '', codeAcc = '', listType = null, inBQ = false;
+
+  const endList = () => { if (listType) { html += `</${listType}>`; listType = null; } };
+  const endBQ   = () => { if (inBQ) { html += '</blockquote>'; inBQ = false; } };
+  const flush   = () => { endList(); endBQ(); };
+
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const inline = t => t
+    .replace(/`([^`]+)`/g, (_, c) => `<code>${esc(c)}</code>`)
+    .replace(/\*\*(.+?)\*\*|__(.+?)__/g, (_, a, b) => `<strong>${a ?? b}</strong>`)
+    .replace(/\*(.+?)\*|_(.+?)_/g,       (_, a, b) => `<em>${a ?? b}</em>`)
+    .replace(/!?\[\[([^\]|#\n]+?)(?:#[^\]|]*)?(?: *\|([^\]]*))?\]\]/g, (_, target, alias) => {
+      if (/\.(png|jpe?g|gif|svg|webp)$/i.test(target)) return `<em>[img: ${esc(target)}]</em>`;
+      const lc  = target.toLowerCase().split('/').pop();
+      const exists = vault.byName.has(lc);
+      const label  = (alias || target.split('/').pop()).trim();
+      return `<a class="wl${exists ? '' : ' broken'}" data-t="${esc(lc)}">${esc(label)}</a>`;
+    })
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Standalone transclusion: ![[Note]] on its own line
+    if (depth < 2) {
+      const tm = line.trim().match(/^!\[\[([^\]|#\n]+?)(?:#[^\]|]*)?\]\]$/);
+      if (tm) {
+        flush();
+        const lc     = tm[1].trim().toLowerCase().split('/').pop();
+        const tNote  = vault.byName.get(lc);
+        if (tNote) {
+          html += `<div class="transclusion"><div class="transclusion-title">📎 ${esc(tNote.name)}</div><div class="transclusion-body">${renderMd(tNote.body, depth + 1)}</div></div>`;
+        } else {
+          html += `<div class="transclusion broken"><em>![[${esc(tm[1])}]] — note not found</em></div>`;
+        }
+        continue;
+      }
+    }
+
+    // Fenced code block
+    if (line.startsWith('```')) {
+      if (!inCode) { flush(); inCode = true; codeLang = line.slice(3).trim(); codeAcc = ''; }
+      else { html += `<pre><code>${esc(codeAcc)}</code></pre>`; inCode = false; }
+      continue;
+    }
+    if (inCode) { codeAcc += (codeAcc ? '\n' : '') + line; continue; }
+
+    // Callout  > [!TYPE] Title
+    const cm = line.match(/^> \[!(\w+)\](.*)/);
+    if (cm) {
+      flush();
+      const type = cm[1].toLowerCase();
+      const title = cm[2].trim() || type;
+      let body = '';
+      while (i + 1 < lines.length && lines[i + 1].startsWith('> ')) {
+        body += inline(lines[++i].slice(2)) + ' ';
+      }
+      html += `<div class="callout cl-${type}"><div class="cl-title">${esc(title)}</div><p>${body.trim()}</p></div>`;
+      continue;
+    }
+
+    // Blockquote
+    if (line.startsWith('> ')) {
+      if (!inBQ) { flush(); html += '<blockquote>'; inBQ = true; }
+      html += inline(line.slice(2)) + ' ';
+      continue;
+    } else endBQ();
+
+    // Heading
+    const hm = line.match(/^(#{1,6})\s+(.+)/);
+    if (hm) { flush(); html += `<h${hm[1].length}>${inline(hm[2])}</h${hm[1].length}>`; continue; }
+
+    // HR
+    if (/^(-{3,}|\*{3,})$/.test(line.trim())) { flush(); html += '<hr>'; continue; }
+
+    // Lists
+    const ul = line.match(/^[-*+]\s+(.+)/);
+    if (ul) { if (listType !== 'ul') { flush(); html += '<ul>'; listType = 'ul'; } html += `<li>${inline(ul[1])}</li>`; continue; }
+    const ol = line.match(/^\d+\.\s+(.+)/);
+    if (ol) { if (listType !== 'ol') { flush(); html += '<ol>'; listType = 'ol'; } html += `<li>${inline(ol[1])}</li>`; continue; }
+
+    flush();
+    if (line.trim()) html += `<p>${inline(line)}</p>`;
+  }
+
+  flush();
+  if (inCode) html += `<pre><code>${esc(codeAcc)}</code></pre>`;
+  return html;
+}
+
+// ── Note Panel ────────────────────────────────────────────────────────────────
+
+function showNotePanel(note) {
+  // Always return to preview mode when showing a (possibly different) note
+  if (_editNote && _editNote !== note) exitEditMode();
+
+  const titleEl = document.getElementById('panel-title');
+  titleEl.textContent = note.name;
+
+  const meta = document.getElementById('panel-meta');
+  meta.innerHTML = '';
+  if (note.isMoc) meta.innerHTML += `<span class="moc-badge">MOC</span>`;
+  for (const tag of note.tags) meta.innerHTML += `<span class="meta-tag">#${tag}</span>`;
+  meta.innerHTML += `<span class="meta-info">↑${note.outDeg ?? 0} out · ↓${note.inDeg ?? 0} in</span>`;
+
+  // Frontmatter block
+  const fmKeys = Object.keys(note.fm).filter(k => !['tags','tag','aliases','title'].includes(k));
+  let fmHtml = '';
+  if (fmKeys.length) {
+    fmHtml = `<div class="fm-block">${fmKeys.map(k => `<b>${k}:</b> ${String(note.fm[k])}`).join('  ·  ')}</div>`;
+  }
+
+  const body = document.getElementById('panel-body');
+  body.innerHTML = fmHtml + renderMd(note.body);
+
+  // Wire up wikilinks
+  body.querySelectorAll('.wl:not(.broken)').forEach(a => {
+    a.addEventListener('click', () => {
+      const target = vault.byName.get(a.dataset.t);
+      if (target) selectNoteByKey(target.filename.toLowerCase());
+    });
+  });
+
+  document.getElementById('note-panel').classList.add('open');
+}
+
+function closeNotePanel() {
+  document.getElementById('note-panel').classList.remove('open');
+  view.selected = null;
+  document.querySelectorAll('.note-item.selected').forEach(el => el.classList.remove('selected'));
+}
+
+// ── Selection ─────────────────────────────────────────────────────────────────
+
+function selectNode(node) {
+  const prevSelected = view.selected;
+  view.selected = node;
+  document.querySelectorAll('.note-item').forEach(el => el.classList.remove('selected'));
+  const el = document.querySelector(`.note-item[data-id="${CSS.escape(node.id)}"]`);
+  if (el) { el.classList.add('selected'); el.scrollIntoView({ block: 'nearest' }); }
+  showNotePanel(node.note);
+
+  // Clear chat history and insert divider when context switches nodes
+  if (prevSelected && prevSelected.id !== node.id) {
+    chat.history = [];
+    const msgs = document.getElementById('chat-messages');
+    if (msgs) {
+      const div = document.createElement('div');
+      div.className = 'chat-divider';
+      div.textContent = node.name;
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  }
+
+  // Pre-warm micro-RAG context for this node (node + neighbors only)
+  rag.nodeHits = [];
+  if (rag.ready && rag.chunks.length) {
+    const seed = node.name + ' ' + node.note.body.slice(0, 300);
+    ragSearchLocal(seed, node.id, 5).then(hits => { rag.nodeHits = hits; });
+  }
+  // Always update context pill (chat is now always visible)
+  const ctxPill = document.getElementById('chat-ctx-pill');
+  if (ctxPill) { ctxPill.textContent = getCtxLabel(); ctxPill.style.display = 'block'; }
+}
+
+function selectNoteByKey(key) {
+  const node = g.nodes.find(n => n.id === key);
+  if (node) selectNode(node);
+}
+
+// Expose for audit panel onclick attrs
+window.selectNoteByKey = selectNoteByKey;
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+
+function buildNoteList(filter) {
+  const list  = document.getElementById('note-list');
+  const terms = (filter || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+
+  let scored;
+  if (!terms.length) {
+    // Default: rank by link degree
+    scored = Array.from(vault.byPath.values())
+      .map(note => ({ note, score: (note.inDeg || 0) + (note.outDeg || 0), snippet: '' }))
+      .sort((a, b) => b.score - a.score);
+  } else {
+    scored = Array.from(vault.byPath.values())
+      .map(note => {
+        const nameLow  = note.name.toLowerCase();
+        const bodyLow  = (note.body || '').toLowerCase();
+        let score = 0;
+        for (const term of terms) {
+          // Name hits are worth more
+          let i = nameLow.indexOf(term);
+          while (i !== -1) { score += 10; i = nameLow.indexOf(term, i + 1); }
+          // Body hits — raw frequency
+          i = bodyLow.indexOf(term);
+          while (i !== -1) { score += 1; i = bodyLow.indexOf(term, i + 1); }
+        }
+        return { note, score, snippet: score > 0 ? makeSnippet(note, terms) : '' };
+      })
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+  }
+
+  list.innerHTML = '';
+  const shown = scored.slice(0, 200);
+  const frag  = document.createDocumentFragment();
+
+  for (const { note, snippet } of shown) {
+    const deg  = (note.inDeg || 0) + (note.outDeg || 0);
+    const node = g.nodes.find(n => n.id === note.filename.toLowerCase());
+    const col  = note.isMoc ? '#e879f9'
+               : node?.clusterColor ?? (deg === 0 ? '#f85149' : '#58a6ff');
+
+    const el = document.createElement('div');
+    el.className  = 'note-item' + (snippet ? ' has-snippet' : '');
+    el.dataset.id = note.filename.toLowerCase();
+
+    const dot = document.createElement('div');
+    dot.className = 'note-dot'; dot.style.background = col;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'note-name'; nameEl.title = note.name; nameEl.textContent = note.name;
+
+    el.appendChild(dot);
+    el.appendChild(nameEl);
+
+    if (note.isMoc) {
+      const b = document.createElement('span'); b.className = 'moc-badge'; b.textContent = 'MOC';
+      el.appendChild(b);
+    } else {
+      const d = document.createElement('div'); d.className = 'note-deg'; d.textContent = deg;
+      el.appendChild(d);
+    }
+
+    if (note._dirty) {
+      const dd = document.createElement('span');
+      dd.className = 'note-dirty'; dd.title = 'Unsaved edits';
+      el.appendChild(dd);
+    }
+
+    if (snippet) {
+      const sn = document.createElement('div');
+      sn.className = 'note-snippet';
+      sn.innerHTML = highlightTerms(snippet, terms);
+      el.appendChild(sn);
+    }
+
+    el.addEventListener('click', () => selectNoteByKey(note.filename.toLowerCase()));
+    frag.appendChild(el);
+  }
+
+  if (scored.length > 200) {
+    const more = document.createElement('div');
+    more.style.cssText = 'padding:8px;text-align:center;color:var(--muted);font-size:0.78rem';
+    more.textContent   = `+ ${scored.length - 200} more — refine your search`;
+    frag.appendChild(more);
+  }
+  list.appendChild(frag);
+}
+
+// Find the first matching position in body and return a clean surrounding snippet
+function makeSnippet(note, terms) {
+  const body    = note.body || '';
+  const bodyLow = body.toLowerCase();
+  let bestIdx   = Infinity;
+  for (const term of terms) {
+    const i = bodyLow.indexOf(term);
+    if (i !== -1 && i < bestIdx) bestIdx = i;
+  }
+  if (bestIdx === Infinity) return '';
+  const start = Math.max(0, bestIdx - 25);
+  const end   = Math.min(body.length, bestIdx + 90);
+  let raw = body.slice(start, end)
+    .replace(/^#+\s*/gm, '')       // strip heading markers
+    .replace(/[*_`~[\]]/g, '')     // strip inline markers
+    .replace(/\n+/g, ' ')          // flatten newlines
+    .trim();
+  if (start > 0) raw = '…' + raw;
+  if (end < body.length) raw += '…';
+  return raw;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function highlightTerms(text, terms) {
+  const escaped = escHtml(text);
+  if (!terms.length) return escaped;
+  const re = new RegExp(
+    `(${terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`,
+    'gi'
+  );
+  return escaped.replace(re, '<mark>$1</mark>');
+}
+
+function buildAuditPanel() {
+  const notes    = Array.from(vault.byPath.values());
+  const resolved = vault.edges.filter(e => e.resolved);
+  const orphans  = notes.filter(n => (n.inDeg || 0) === 0 && (n.outDeg || 0) === 0);
+  const unlinked = notes.filter(n => (n.inDeg || 0) === 0 && (n.outDeg || 0) > 0);
+  const broken   = [...new Set(vault.edges.filter(e => !e.resolved).map(e => e.target))];
+  const topNotes = [...notes].sort((a, b) => (b.inDeg || 0) - (a.inDeg || 0)).slice(0, 8);
+  const tagMap   = new Map();
+  for (const n of notes) for (const t of n.tags) tagMap.set(t, (tagMap.get(t) || 0) + 1);
+  const avgDeg   = notes.length ? (resolved.length * 2 / notes.length).toFixed(1) : 0;
+  const mocs     = notes.filter(n => n.isMoc);
+
+  // ── Frontmatter lint ──────────────────────────────────────────────────────
+  const notesWithFm = notes.filter(n => Object.keys(n.fm).length > 0);
+  const fmFreq = new Map();
+  for (const n of notesWithFm) for (const k of Object.keys(n.fm)) fmFreq.set(k, (fmFreq.get(k) || 0) + 1);
+  // Keys used in ≥30% of FM-having notes but not 100% (those don't need linting)
+  const threshold   = Math.max(2, notesWithFm.length * 0.3);
+  const expectedKeys = [...fmFreq.entries()]
+    .filter(([, c]) => c >= threshold && c < notesWithFm.length)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([k]) => k);
+
+  const escId = id => id.replace(/'/g, "\\'");
+
+  let lintHtml = '';
+  if (notesWithFm.length === 0) {
+    lintHtml = `<div class="audit-item good">✓ No frontmatter found — nothing to lint</div>`;
+  } else if (expectedKeys.length === 0) {
+    lintHtml = `<div class="audit-item good">✓ Frontmatter looks consistent</div>`;
+  } else {
+    for (const key of expectedKeys) {
+      const missing = notesWithFm.filter(n => !(key in n.fm));
+      if (missing.length === 0) continue;
+      lintHtml += `<div class="lint-item"><b>${missing.length} notes</b> missing <code>${key}:</code> field</div>`;
+      lintHtml += missing.slice(0, 4).map(n =>
+        `<div class="audit-item" onclick="selectNoteByKey('${escId(n.filename.toLowerCase())}')" style="padding-left:18px">↳ ${n.name}</div>`
+      ).join('');
+      if (missing.length > 4) lintHtml += `<div class="audit-item" style="padding-left:18px;color:var(--muted)">+ ${missing.length - 4} more</div>`;
+    }
+    if (!lintHtml) lintHtml = `<div class="audit-item good">✓ All expected fields present</div>`;
+  }
+
+  const list = (arr, cls, fn, max = 10) =>
+    arr.length === 0
+      ? `<div class="audit-item good">✓ None</div>`
+      : arr.slice(0, max).map(fn).join('') + (arr.length > max ? `<div class="audit-item">+ ${arr.length - max} more</div>` : '');
+
+  document.getElementById('tab-audit').innerHTML = `
+    <div class="audit-section">
+      <div class="audit-title">Vault Stats</div>
+      <div class="audit-kv"><span>Notes</span><span class="val">${notes.length}</span></div>
+      <div class="audit-kv"><span>Links</span><span class="val">${resolved.length}</span></div>
+      <div class="audit-kv"><span>Tags</span><span class="val">${tagMap.size}</span></div>
+      <div class="audit-kv"><span>Avg degree</span><span class="val">${avgDeg}</span></div>
+    </div>
+
+    <div class="audit-section">
+      <div class="audit-title">Orphan Notes <span style="font-weight:400">(${orphans.length})</span></div>
+      ${list(orphans, 'danger', n => `<div class="audit-item danger" onclick="selectNoteByKey('${escId(n.filename.toLowerCase())}')">⚠ ${n.name}</div>`)}
+    </div>
+
+    <div class="audit-section">
+      <div class="audit-title">No Inbound Links <span style="font-weight:400">(${unlinked.length})</span></div>
+      ${list(unlinked, '', n => `<div class="audit-item" onclick="selectNoteByKey('${escId(n.filename.toLowerCase())}')">${n.name}</div>`)}
+    </div>
+
+    <div class="audit-section">
+      <div class="audit-title">Broken Links <span style="font-weight:400">(${broken.length})</span></div>
+      ${list(broken, 'danger', t => `<div class="audit-item danger" title="No note found: ${t}">✗ [[${t}]]</div>`)}
+    </div>
+
+    <div class="audit-section">
+      <div class="audit-title">Most Linked</div>
+      ${topNotes.filter(n => (n.inDeg || 0) > 0)
+        .map(n => `<div class="audit-item" onclick="selectNoteByKey('${escId(n.filename.toLowerCase())}')">${n.name}<span style="color:var(--accent-hi);float:right">↓${n.inDeg}</span></div>`)
+        .join('')}
+    </div>
+
+    <div class="audit-section">
+      <div class="audit-title">Tag Cloud <span style="font-weight:400">(${tagMap.size}) — click to filter graph</span></div>
+      <div class="tag-cloud" id="tag-cloud-container">
+        ${[...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40)
+          .map(([t, c]) => `<span class="tag-pill" data-tag="${t}" title="${c} notes">#${t}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="audit-section">
+      <div class="audit-title">MOC Notes <span style="font-weight:400">(${mocs.length})</span></div>
+      ${mocs.length === 0
+        ? `<div class="audit-item good">✓ None detected</div>`
+        : mocs.slice(0, 10).map(n => `<div class="audit-item" onclick="selectNoteByKey('${escId(n.filename.toLowerCase())}')" style="color:#e879f9">⬡ ${n.name} <span style="float:right;color:var(--muted)">↑${n.outDeg}</span></div>`).join('')}
+    </div>
+
+    <div class="audit-section">
+      <div class="audit-title">Frontmatter Lint</div>
+      ${lintHtml}
+    </div>
+  `;
+}
+
+function buildHeaderStats() {
+  const notes   = vault.byPath.size;
+  const links   = vault.edges.filter(e => e.resolved).length;
+  const orphans = Array.from(vault.byPath.values()).filter(n => (n.inDeg || 0) === 0 && (n.outDeg || 0) === 0).length;
+  document.getElementById('header-stats').innerHTML = `
+    <div class="hstat"><b>${notes}</b> notes</div>
+    <div class="hstat"><b>${links}</b> links</div>
+    <div class="hstat"><b style="color:${orphans > 0 ? 'var(--node-orph)' : 'var(--node-hub)'}">${orphans}</b> orphans</div>
+  `;
+  document.getElementById('vault-name').textContent = vault.vaultName;
+}
+
+// ── Tag filtering ─────────────────────────────────────────────────────────────
+
+function setTagFilter(tag) {
+  view.activeTag = tag;
+  const bar   = document.getElementById('tag-filter-bar');
+  const label = document.getElementById('tag-filter-label');
+  bar.style.display   = tag ? 'flex' : 'none';
+  label.textContent   = tag ? `#${tag}` : '';
+  // Update pill active state (the cloud may already be rendered)
+  document.querySelectorAll('.tag-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.tag === tag);
+  });
+}
+
+function clearTagFilter() {
+  setTagFilter(null);
+}
+
+// Delegate tag pill clicks (cloud is rebuilt on audit panel open)
+document.getElementById('tab-audit').addEventListener('click', e => {
+  const pill = e.target.closest('.tag-pill');
+  if (!pill) return;
+  const tag = pill.dataset.tag;
+  setTagFilter(view.activeTag === tag ? null : tag); // toggle
+  // Switch to graph tab so filter is visible
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('.tab-btn[data-tab="audit"]').classList.add('active');
+  document.getElementById('tab-audit').classList.add('active');
+});
+
+window.clearTagFilter = clearTagFilter;
+
+// ── Sidebar tabs ──────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+}));
+
+document.getElementById('note-search').addEventListener('input', e => buildNoteList(e.target.value));
+
+document.getElementById('btn-close-panel').addEventListener('click', closeNotePanel);
+
+// ── Note editor ───────────────────────────────────────────────────────────────
+
+let _editNote = null;  // the note currently being edited
+let _autosaveTimer = null;
+
+function enterEditMode(note) {
+  _editNote = note;
+  // Snapshot the on-disk body the first time we enter edit mode for this note
+  if (note._savedBody === undefined) note._savedBody = note.body;
+  document.getElementById('panel-body').style.display = 'none';
+  document.getElementById('note-editor').classList.add('active');
+  document.getElementById('note-textarea').value = note.body;  // may be a dirty draft
+  document.getElementById('btn-edit-note').textContent = '👁';
+  document.getElementById('btn-edit-note').title = 'Switch to preview';
+  // Show unsaved badge if note has a pending draft
+  const savedEl = document.getElementById('ed-saved');
+  if (note._dirty) {
+    savedEl.textContent = '● unsaved draft';
+    savedEl.style.color = 'var(--tag-col)';
+    savedEl.style.display = '';
+  } else {
+    savedEl.style.display = 'none';
+  }
+  document.getElementById('note-textarea').focus();
+}
+
+function exitEditMode({ discard = false } = {}) {
+  if (_editNote) {
+    const ta = document.getElementById('note-textarea');
+    if (!discard && ta.value !== _editNote._savedBody) {
+      // Preserve edits in memory so coming back shows the latest draft
+      _editNote.body = ta.value;
+      _editNote._dirty = true;
+      markDirtyInList(_editNote);
+    } else if (discard) {
+      // Restore to last-saved body
+      _editNote.body = _editNote._savedBody ?? _editNote.body;
+      _editNote._dirty = false;
+      markDirtyInList(_editNote);
+    }
+  }
+  document.getElementById('panel-body').style.display = '';
+  document.getElementById('note-editor').classList.remove('active');
+  document.getElementById('btn-edit-note').textContent = '✏️';
+  document.getElementById('btn-edit-note').title = 'Edit note';
+  _editNote = null;
+}
+
+function markDirtyInList(note) {
+  const el = document.querySelector(`.note-item[data-id="${CSS.escape(note.filename.toLowerCase())}"] .note-dirty`);
+  if (note._dirty) {
+    if (!el) {
+      const item = document.querySelector(`.note-item[data-id="${CSS.escape(note.filename.toLowerCase())}"]`);
+      if (item) {
+        const dot = document.createElement('span');
+        dot.className = 'note-dirty';
+        dot.title = 'Unsaved edits';
+        item.appendChild(dot);
+      }
+    }
+  } else {
+    if (el) el.remove();
+  }
+}
+
+document.getElementById('btn-edit-note').addEventListener('click', () => {
+  if (_editNote) { exitEditMode(); if (view.selected) showNotePanel(view.selected.note); }
+  else if (view.selected) { enterEditMode(view.selected.note); }
+});
+
+document.getElementById('btn-discard-edit').addEventListener('click', () => {
+  exitEditMode({ discard: true });
+  // Re-render from restored body
+  if (view.selected) showNotePanel(view.selected.note);
+});
+
+// ── Toolbar actions ───────────────────────────────────────────────────────────
+
+function wrapSel(ta, before, after) {
+  after = after ?? before;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e);
+  ta.setRangeText(sel ? `${before}${sel}${after}` : `${before}${after}`, s, e, sel ? 'select' : 'end');
+  ta.focus();
+}
+
+function insertLine(ta, prefix) {
+  const s = ta.selectionStart;
+  const lineStart = ta.value.lastIndexOf('\n', s - 1) + 1;
+  const lineEnd = ta.value.indexOf('\n', s);
+  const line = ta.value.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+  if (line.startsWith(prefix)) {
+    ta.setRangeText('', lineStart, lineStart + prefix.length, 'preserve');
+  } else {
+    ta.setRangeText(prefix, lineStart, lineStart, 'preserve');
+  }
+  ta.focus();
+}
+
+document.querySelector('.editor-toolbar').addEventListener('click', e => {
+  const btn = e.target.closest('[data-ed]');
+  if (!btn) return;
+  const ta = document.getElementById('note-textarea');
+  const action = btn.dataset.ed;
+  switch (action) {
+    case 'bold':   wrapSel(ta, '**'); break;
+    case 'italic': wrapSel(ta, '*'); break;
+    case 'h1':     insertLine(ta, '# '); break;
+    case 'h2':     insertLine(ta, '## '); break;
+    case 'h3':     insertLine(ta, '### '); break;
+    case 'code':   wrapSel(ta, '`'); break;
+    case 'cblock': wrapSel(ta, '\n```\n', '\n```\n'); break;
+    case 'link': {
+      const s = ta.selectionStart, el = ta.selectionEnd;
+      const sel = ta.value.slice(s, el) || 'text';
+      ta.setRangeText(`[${sel}](url)`, s, el, 'end');
+      ta.focus(); break;
+    }
+    case 'ul':    insertLine(ta, '- '); break;
+    case 'ol':    insertLine(ta, '1. '); break;
+    case 'todo':  insertLine(ta, '- [ ] '); break;
+    case 'hr':    wrapSel(ta, '\n---\n', ''); break;
+    case 'quote': insertLine(ta, '> '); break;
+  }
+});
+
+// Ctrl+B / Ctrl+I shortcuts inside textarea
+document.getElementById('note-textarea').addEventListener('keydown', e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  const ta = e.target;
+  if (e.key === 'b') { e.preventDefault(); wrapSel(ta, '**'); }
+  if (e.key === 'i') { e.preventDefault(); wrapSel(ta, '*'); }
+  if (e.key === 's') { e.preventDefault(); saveNoteEdit(); }
+});
+
+// ── Save ─────────────────────────────────────────────────────────────────────
+
+async function getFileHandleFromPath(dirHandle, path) {
+  const parts = path.replace(/^\//, '').split('/');
+  let handle = dirHandle;
+  for (let i = 0; i < parts.length - 1; i++) {
+    handle = await handle.getDirectoryHandle(parts[i]);
+  }
+  return handle.getFileHandle(parts[parts.length - 1], { create: true });
+}
+
+async function saveNoteEdit() {
+  if (!_editNote) return;
+  const content = document.getElementById('note-textarea').value;
+  _editNote.body = content;          // update in-memory copy
+
+  if (vault.dirHandle && _editNote.path) {
+    try {
+      const fh = await getFileHandleFromPath(vault.dirHandle, _editNote.path);
+      const w  = await fh.createWritable();
+      // Reconstruct the file: restore frontmatter if it had any
+      const hasFm = Object.keys(_editNote.fm).length > 0;
+      let fileContent = content;
+      if (hasFm) {
+        const fmLines = ['---'];
+        for (const [k, v] of Object.entries(_editNote.fm)) {
+          fmLines.push(`${k}: ${typeof v === 'string' ? JSON.stringify(v) : v}`);
+        }
+        fmLines.push('---', '');
+        fileContent = fmLines.join('\n') + '\n' + content;
+      }
+      await w.write(fileContent);
+      await w.close();
+      _editNote._savedBody = content;
+      _editNote._dirty = false;
+      markDirtyInList(_editNote);
+      showSaved();
+      await saveIndexMd();
+    } catch (err) {
+      alert('Save failed: ' + err.message);
+    }
+  } else {
+    // No dirHandle — offer download
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: (_editNote.filename || 'note') + '.md',
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+    _editNote._savedBody = content;
+    _editNote._dirty = false;
+    markDirtyInList(_editNote);
+    showSaved();
+  }
+}
+
+function showSaved() {
+  const el = document.getElementById('ed-saved');
+  el.textContent = '✓ Saved';
+  el.style.color = 'var(--node-hub)';
+  el.style.display = '';
+  clearTimeout(_autosaveTimer);
+  _autosaveTimer = setTimeout(() => { el.style.display = 'none'; }, 2500);
+}
+
+document.getElementById('btn-save-note').addEventListener('click', saveNoteEdit);
+
+// Autosave
+document.getElementById('note-textarea').addEventListener('input', () => {
+  if (!document.getElementById('autosave-cb').checked) return;
+  clearTimeout(_autosaveTimer);
+  _autosaveTimer = setTimeout(saveNoteEdit, 1500);
+});
+document.getElementById('btn-chat-node').addEventListener('click', () => {
+  const pill = document.getElementById('chat-ctx-pill');
+  pill.textContent = getCtxLabel();
+  pill.style.display = 'block';
+  document.getElementById('chat-textarea').focus();
+});
+
+document.getElementById('btn-zin').addEventListener('click',  () => { view.targetScale = Math.min(10, view.targetScale * 1.3); });
+document.getElementById('btn-zout').addEventListener('click', () => { view.targetScale = Math.max(0.08, view.targetScale * 0.77); });
+document.getElementById('btn-fit').addEventListener('click',  fitGraph);
+document.getElementById('btn-sim').addEventListener('click',  () => {
+  g.paused = !g.paused;
+  document.getElementById('btn-sim').textContent = g.paused ? '▶' : '⏸';
+});
+document.getElementById('btn-3d').addEventListener('click', () => {
+  view.mode3d = !view.mode3d;
+  const btn = document.getElementById('btn-3d');
+  btn.classList.toggle('active3d', view.mode3d);
+  btn.title = view.mode3d ? 'Switch to 2D' : 'Toggle 3D view';
+
+  if (view.mode3d) {
+    // Scatter nodes in Z and re-simulate
+    for (const n of g.nodes) { n.z = (Math.random() - 0.5) * 500; n.vz = 0; }
+    g.alpha = 1;
+    view.azimuth   = 0.5;
+    view.elevation = 0.35;
+    // Reset pan so graph is centered
+    view.x = view.targetX = 0;
+    view.y = view.targetY = 0;
+    view.targetScale = 0.75; view.scale = 0.75;
+  } else {
+    // Flatten Z and return to 2D
+    for (const n of g.nodes) { n.z = 0; n.vz = 0; }
+    g.alpha = 1;
+    view.angle = 0;
+    fitGraph();
+  }
+});
+document.getElementById('btn-change').addEventListener('click', () => {
+  cancelAnimationFrame(g.raf);
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('drop-screen').style.display = '';
+});
+
+// ── Vault Loading ─────────────────────────────────────────────────────────────
+
+async function loadFiles(files) {
+  document.getElementById('loading').classList.add('visible');
+  try {
+    await processFiles(files);
+    buildNoteList('');
+    buildAuditPanel();
+    buildHeaderStats();
+    saveIndexMd();  // write/update index.md if folder access exists
+    startEmbedWorker(); // begin indexing vault for RAG
+    // Show app first so canvas has real dimensions, then resize + draw
+    document.getElementById('loading').classList.remove('visible');
+    document.getElementById('drop-screen').classList.add('hiding');
+    document.getElementById('app').classList.add('visible');
+    setTimeout(() => {
+      document.getElementById('drop-screen').style.display = 'none';
+      document.getElementById('drop-screen').classList.remove('hiding');
+    }, 300);
+    // One rAF to let the browser lay out the canvas
+    requestAnimationFrame(() => {
+      resizeCanvas();
+      fitGraph();
+      cancelAnimationFrame(g.raf);
+      drawFrame();
+    });
+  } catch (err) {
+    document.getElementById('loading').classList.remove('visible');
+    console.error(err);
+    alert('Error loading vault: ' + err.message);
+  }
+}
+
+// File System Access API
+document.getElementById('btn-open-folder').addEventListener('click', async () => {
+  if (!window.showDirectoryPicker) {
+    alert('Your browser does not support the Folder Picker API.\nPlease use Chrome / Edge, or drop a ZIP file instead.');
+    return;
+  }
+  try {
+    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    vault.vaultName  = dirHandle.name;
+    vault.dirHandle  = dirHandle;
+    document.getElementById('loading').classList.add('visible');
+    setProgress(2, 'Reading folder…');
+    const files = [];
+    async function walk(handle, path) {
+      for await (const [name, entry] of handle) {
+        if (name.startsWith('.') || name === 'node_modules') continue;
+        if (entry.kind === 'file' && name.endsWith('.md')) {
+          const file = await entry.getFile();
+          files.push({ path: path + name, content: await file.text() });
+        } else if (entry.kind === 'directory') {
+          await walk(entry, path + name + '/');
+        }
+      }
+    }
+    await walk(dirHandle, '');
+    if (files.length === 0) { document.getElementById('loading').classList.remove('visible'); alert('No .md files found in this folder.'); return; }
+    await loadFiles(files);
+  } catch (e) {
+    document.getElementById('loading').classList.remove('visible');
+    if (e.name !== 'AbortError') alert('Could not open folder: ' + e.message);
+  }
+});
+
+// ZIP drop
+async function handleZip(file) {
+  vault.vaultName = file.name.replace(/\.zip$/i, '');
+  document.getElementById('loading').classList.add('visible');
+  setProgress(2, 'Reading ZIP…');
+  try {
+    if (typeof JSZip === 'undefined') throw new Error('JSZip failed to load — check your internet connection.');
+    const zip     = await JSZip.loadAsync(file);
+    const entries = Object.entries(zip.files)
+      .filter(([p, e]) => !e.dir && p.endsWith('.md') && !p.split('/').some(s => s.startsWith('.')));
+    if (entries.length === 0) { document.getElementById('loading').classList.remove('visible'); alert('No .md files found in this ZIP.'); return; }
+    setProgress(5, `Found ${entries.length} notes, reading…`);
+    const files = [];
+    for (let i = 0; i < entries.length; i++) {
+      const [p, e] = entries[i];
+      if (i % 100 === 0) { setProgress(5 + (i / entries.length) * 10, `Reading ${i} / ${entries.length}…`); await tick(); }
+      files.push({ path: p, content: await e.async('string') });
+    }
+    await loadFiles(files);
+  } catch (err) {
+    document.getElementById('loading').classList.remove('visible');
+    alert('Could not read ZIP: ' + err.message);
+  }
+}
+
+document.getElementById('file-input').addEventListener('change', e => { if (e.target.files[0]) handleZip(e.target.files[0]); });
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file?.name.endsWith('.zip')) handleZip(file);
+  else alert('Please drop a .zip file.');
+});
+
+// Global drop fallback
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file?.name.endsWith('.zip')) handleZip(file);
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function setProgress(pct, label, sub) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('load-label').textContent    = label;
+  if (sub !== undefined) document.getElementById('load-sub').textContent = sub;
+}
+
+function tick() { return new Promise(r => setTimeout(r, 0)); }
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+
+const CHAT_MODELS = {
+  'gemma4-e4b':  { id: 'onnx-community/gemma-4-E4B-it-ONNX',      dtype: 'q4f16', type: 'multimodal' },
+  'gemma4-e2b':  { id: 'onnx-community/gemma-4-E2B-it-ONNX',      dtype: 'q4f16', type: 'multimodal' },
+  'qwen-1.5b':   { id: 'Qwen/Qwen2.5-1.5B-Instruct',              dtype: 'q4f16', type: 'causal' },
+  'qwen-0.5b':   { id: 'Qwen/Qwen2.5-0.5B-Instruct',              dtype: 'q4',    type: 'causal' },
+  'smollm-1.7b': { id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct',    dtype: 'q4f16', type: 'causal' },
+};
+
+const chat = {
+  mode: 'local',
+  worker: null,
+  modelReady: false,
+  modelLoading: false,
+  history: [],
+  streaming: false,
+  webResults: null,  // injected search results for current turn
+};
+
+// ── Generation worker ─────────────────────────────────────────────────────────
+const CHAT_WORKER_SRC = `
+import {
+  env, AutoTokenizer, AutoModelForCausalLM,
+  AutoProcessor, Gemma4ForConditionalGeneration,
+  TextStreamer, InterruptableStoppingCriteria,
+} from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4/+esm';
+
+env.allowLocalModels  = true;
+env.localModelPath    = '/models/';
+env.allowRemoteModels = true;
+env.useBrowserCache   = true;
+
+let processor = null, tokenizer = null, model = null, loadedType = null;
+const stopping_criteria = new InterruptableStoppingCriteria();
+
+const progress = p => self.postMessage({ type: 'progress', data: p });
+
+async function loadCausal(modelId, dtype) {
+  tokenizer = await AutoTokenizer.from_pretrained(modelId, { progress_callback: progress });
+  model     = await AutoModelForCausalLM.from_pretrained(modelId, { dtype, device: 'webgpu', progress_callback: progress });
+  self.postMessage({ type: 'status', data: 'Warming up…' });
+  await model.generate({ ...tokenizer('a'), max_new_tokens: 1 });
+  loadedType = 'causal';
+}
+
+async function loadMultimodal(modelId, dtype) {
+  processor = await AutoProcessor.from_pretrained(modelId, { progress_callback: progress });
+  tokenizer = processor.tokenizer;
+  model     = await Gemma4ForConditionalGeneration.from_pretrained(modelId, { dtype, device: 'webgpu', progress_callback: progress });
+  self.postMessage({ type: 'status', data: 'Warming up…' });
+  await model.generate({ ...tokenizer('a'), max_new_tokens: 1 });
+  loadedType = 'multimodal';
+}
+
+async function generate(messages, id, maxTokens) {
+  stopping_criteria.reset();
+  const streamer = new TextStreamer(tokenizer, {
+    skip_prompt: true, skip_special_tokens: true,
+    callback_function: tok => self.postMessage({ type: 'token', token: tok, id }),
+  });
+  if (loadedType === 'multimodal') {
+    const prompt = processor.apply_chat_template(messages, { add_generation_prompt: true });
+    const inputs = await processor(prompt, null, null, { add_special_tokens: false });
+    await model.generate({ ...inputs, max_new_tokens: maxTokens, do_sample: true, temperature: 1.0, top_k: 64, top_p: 0.95, streamer, stopping_criteria });
+  } else {
+    const inputs = tokenizer.apply_chat_template(messages, { add_generation_prompt: true, return_dict: true });
+    await model.generate({ ...inputs, max_new_tokens: maxTokens, do_sample: true, temperature: 0.7, top_k: 50, top_p: 0.95, streamer, stopping_criteria });
+  }
+}
+
+self.addEventListener('message', async ({ data: { type, modelId, dtype, modelType, messages, id, maxTokens } }) => {
+  try {
+    if (type === 'load') {
+      self.postMessage({ type: 'status', data: 'Loading tokenizer…' });
+      if (modelType === 'multimodal') await loadMultimodal(modelId, dtype);
+      else                            await loadCausal(modelId, dtype);
+      self.postMessage({ type: 'ready' });
+    } else if (type === 'generate') {
+      await generate(messages, id, maxTokens ?? 600);
+      self.postMessage({ type: 'complete', id });
+    } else if (type === 'stop') {
+      stopping_criteria.interrupt();
+    }
+  } catch (err) {
+    self.postMessage({ type: 'error', data: err.message || String(err) });
+  }
+});
+`;
+
+// ── Embedding worker (RAG) ────────────────────────────────────────────────────
+const EMBED_WORKER_SRC = `
+import { env, pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4/+esm';
+env.allowLocalModels = false; env.allowRemoteModels = true;
+let embedder = null;
+self.addEventListener('message', async ({ data: { type, texts, id } }) => {
+  try {
+    if (type === 'load') {
+      embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+        device: 'wasm',
+        progress_callback: p => self.postMessage({ type: 'progress', data: p }),
+      });
+      self.postMessage({ type: 'ready' });
+    } else if (type === 'embed') {
+      const results = [];
+      for (const text of texts) {
+        const out = await embedder(text, { pooling: 'mean', normalize: true });
+        results.push(Array.from(out.data));
+      }
+      self.postMessage({ type: 'embeddings', vectors: results, id });
+    }
+  } catch (err) {
+    self.postMessage({ type: 'error', data: err.message, id });
+  }
+});
+`;
+
+// ── RAG state ─────────────────────────────────────────────────────────────────
+const rag = {
+  worker: null,
+  ready: false,
+  indexing: false,
+  chunks: [],     // { text, embedding, noteId, noteName }
+  nodeHits: [],   // pre-warmed hits for selected node
+  embedQueue: Promise.resolve(),
+};
+
+function makeWorker(src) {
+  const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'application/javascript' })), { type: 'module' });
+  return w;
+}
+
+function setChatStatus(msg, cls = '') {
+  const el = document.getElementById('chat-status');
+  el.textContent = msg;
+  el.className   = 'chat-status' + (cls ? ' ' + cls : '');
+}
+
+// ── RAG helpers ───────────────────────────────────────────────────────────────
+
+function chunkText(text, maxChars = 800, overlapChars = 150) {
+  const sentences = text.match(/[^.!?\n]+[.!?\n]+|[^.!?\n]+$/g) || [text];
+  const chunks = [];
+  let cur = '';
+  for (const s of sentences) {
+    if (cur.length + s.length > maxChars && cur.length > 0) {
+      chunks.push(cur.trim());
+      const words = cur.split(/\s+/);
+      let olen = 0, overlap = [];
+      for (let i = words.length - 1; i >= 0 && olen < overlapChars; i--) {
+        overlap.unshift(words[i]); olen += words[i].length + 1;
+      }
+      cur = overlap.join(' ') + ' ' + s;
+    } else { cur += (cur ? ' ' : '') + s; }
+  }
+  if (cur.trim()) chunks.push(cur.trim());
+  return chunks;
+}
+
+function cosineSim(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-8);
+}
+
+function embedTexts(texts) {
+  rag.embedQueue = rag.embedQueue.then(() => new Promise((res, rej) => {
+    const id = Math.random().toString(36).slice(2);
+    const handler = ({ data }) => {
+      if (data.id !== id) return;
+      rag.worker.removeEventListener('message', handler);
+      data.type === 'embeddings' ? res(data.vectors) : rej(new Error(data.data));
+    };
+    rag.worker.addEventListener('message', handler);
+    rag.worker.postMessage({ type: 'embed', texts, id });
+  }));
+  return rag.embedQueue;
+}
+
+async function ragIndexVault() {
+  if (rag.indexing || !rag.ready || !vault.byPath.size) return;
+  rag.indexing = true;
+  const ragEl = document.getElementById('chat-rag-status');
+  ragEl.style.display = '';
+  const rawChunks = [];
+  for (const note of vault.byPath.values()) {
+    for (const text of chunkText(note.body.slice(0, 3000))) {
+      rawChunks.push({ text, noteId: note.filename.toLowerCase(), noteName: note.name });
+    }
+  }
+  const BATCH = 32;
+  const allVecs = [];
+  for (let i = 0; i < rawChunks.length; i += BATCH) {
+    ragEl.textContent = `Indexing… ${Math.min(i + BATCH, rawChunks.length)}/${rawChunks.length} chunks`;
+    const vecs = await embedTexts(rawChunks.slice(i, i + BATCH).map(c => c.text));
+    allVecs.push(...vecs);
+  }
+  rag.chunks   = rawChunks.map((c, i) => ({ ...c, embedding: allVecs[i] }));
+  rag.indexing = false;
+  ragEl.textContent = `RAG ready — ${rag.chunks.length} chunks`;
+}
+
+async function ragSearch(query, topK = 5) {
+  if (!rag.ready || !rag.chunks.length) return [];
+  const [qvec] = await embedTexts([query]);
+  return rag.chunks
+    .map(c => ({ ...c, score: cosineSim(qvec, c.embedding) }))
+    .filter(c => c.score > 0.25)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+
+// Micro-RAG: search only within the selected node + its 1-hop neighbors
+async function ragSearchLocal(query, nodeId, topK = 5) {
+  if (!rag.ready || !rag.chunks.length) return [];
+  const neighborIds = new Set([nodeId]);
+  for (const e of g.edges) {
+    if (e.s.id === nodeId) neighborIds.add(e.t.id);
+    if (e.t.id === nodeId) neighborIds.add(e.s.id);
+  }
+  const local = rag.chunks.filter(c => neighborIds.has(c.noteId));
+  if (!local.length) return ragSearch(query, topK);
+  const [qvec] = await embedTexts([query]);
+  return local
+    .map(c => ({ ...c, score: cosineSim(qvec, c.embedding) }))
+    .filter(c => c.score > 0.2)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+
+function startEmbedWorker() {
+  if (rag.worker) return;
+  rag.worker = makeWorker(EMBED_WORKER_SRC);
+  rag.worker.addEventListener('error', e => console.warn('Embed worker:', e.message));
+  rag.worker.addEventListener('message', ({ data }) => {
+    if (data.type === 'ready') { rag.ready = true; ragIndexVault(); }
+  });
+  rag.worker.postMessage({ type: 'load' });
+  const ragEl = document.getElementById('chat-rag-status');
+  ragEl.style.display = '';
+  ragEl.textContent = 'Loading embedding model…';
+}
+
+// ── Web search ────────────────────────────────────────────────────────────────
+
+const SearchProviders = {
+  async brave(query, apiKey) {
+    const res = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`, {
+      headers: { 'Accept': 'application/json', 'X-Subscription-Token': apiKey },
+    });
+    if (!res.ok) throw new Error(`Brave ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+    return (data.web?.results || []).slice(0, 5).map(r => ({ title: r.title, url: r.url, snippet: r.description || '' }));
+  },
+  async tavily(query, apiKey) {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: 5 }),
+    });
+    if (!res.ok) throw new Error(`Tavily ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+    return (data.results || []).map(r => ({ title: r.title, url: r.url, snippet: r.content || '' }));
+  },
+  async searxng(query, instanceUrl) {
+    const base = instanceUrl.replace(/\/+$/, '');
+    const res = await fetch(`${base}/search?q=${encodeURIComponent(query)}&format=json&categories=general`);
+    if (!res.ok) throw new Error(`SearXNG ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+    return (data.results || []).slice(0, 5).map(r => ({ title: r.title, url: r.url, snippet: r.content || '' }));
+  },
+};
+
+function getSearchConfig() {
+  return {
+    provider: localStorage.getItem('vm_search_provider') || 'none',
+    apiKey:   localStorage.getItem('vm_search_key')      || '',
+    url:      localStorage.getItem('vm_search_url')      || '',
+  };
+}
+
+function isSearchConfigured() {
+  const { provider, apiKey, url } = getSearchConfig();
+  if (provider === 'none') return false;
+  if (provider === 'searxng') return !!url;
+  return !!apiKey;
+}
+
+async function executeWebSearch(query) {
+  const { provider, apiKey, url } = getSearchConfig();
+  if (provider === 'brave')   return SearchProviders.brave(query, apiKey);
+  if (provider === 'tavily')  return SearchProviders.tavily(query, apiKey);
+  if (provider === 'searxng') return SearchProviders.searxng(query, url);
+  throw new Error('No search provider configured');
+}
+
+// ── Context building ──────────────────────────────────────────────────────────
+
+async function buildSystemPrompt(query) {
+  let ctx = `# Vault: ${vault.vaultName}\n${vault.byPath.size} notes · ${vault.edges.filter(e => e.resolved).length} links\n\n`;
+
+  if (view.selected) {
+    const note = view.selected.note;
+    ctx += `## Selected note: ${note.name}\n`;
+    if (note.tags.size) ctx += `tags: ${[...note.tags].join(', ')}\n`;
+    ctx += note.body.slice(0, 1400) + '\n\n';
+    for (const e of g.edges) {
+      const nb = e.s.id === view.selected.id ? e.t : e.t.id === view.selected.id ? e.s : null;
+      if (nb) ctx += `### Linked: ${nb.name}\n${nb.note.body.slice(0, 350)}\n\n`;
+    }
+  }
+
+  if (rag.ready && rag.chunks.length) {
+    // Pre-warmed micro hits → fresh micro search → full vault search
+    const hits = (view.selected && rag.nodeHits?.length)
+      ? rag.nodeHits
+      : view.selected && query
+        ? await ragSearchLocal(query, view.selected.id, 4)
+        : query ? await ragSearch(query, 4) : [];
+    if (hits.length) {
+      ctx += `## Semantically relevant:\n`;
+      for (const h of hits) {
+        if (view.selected && h.noteId === view.selected.id) continue;
+        ctx += `### ${h.noteName}\n${h.text}\n\n`;
+      }
+    }
+  } else if (!view.selected) {
+    [...g.nodes].sort((a, b) => b.deg - a.deg).slice(0, 5).forEach(n => {
+      ctx += `## ${n.name}\n${n.note.body.slice(0, 600)}\n\n`;
+    });
+  }
+
+  if (chat.webResults?.length) {
+    ctx += `## Web search results:\n`;
+    chat.webResults.forEach((r, i) => {
+      ctx += `### [${i+1}] ${r.title}\n${r.url}\n${r.snippet}\n\n`;
+    });
+  }
+
+  return `You are a knowledgeable assistant helping the user explore their Obsidian knowledge vault. Be concise. Reference note titles with [[double brackets]]. If writing a new note, use YAML frontmatter.\n\n${ctx}`;
+}
+
+function getCtxLabel() {
+  const rl = rag.chunks.length ? ` + RAG (${rag.chunks.length} chunks)` : '';
+  return view.selected ? `${view.selected.name}${rl}` : `top notes${rl}`;
+}
+
+function chatAddBubble(role, content) {
+  const msgs = document.getElementById('chat-messages');
+  document.querySelectorAll('#chat-messages [data-placeholder]').forEach(el => el.remove());
+  const div  = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  const bubbleId = 'cb-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  div.innerHTML = `<div class="chat-bubble" id="${bubbleId}"></div>`;
+  div.querySelector('.chat-bubble').textContent = content;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return { div, bubbleId };
+}
+
+function chatFinalizeAssistant(div, content) {
+  const acts = document.createElement('div');
+  acts.className = 'chat-msg-acts';
+  acts.innerHTML = `<button class="chat-save-btn" data-save>💾 Save as note</button>`;
+  div.appendChild(acts);
+  chat.history.push({ role: 'assistant', content });
+}
+
+// ── index.md ──────────────────────────────────────────────────────────────────
+
+function buildIndexMd() {
+  const notes    = Array.from(vault.byPath.values());
+  const mocs     = notes.filter(n => n.isMoc);
+  const resolved = vault.edges.filter(e => e.resolved);
+  const tagMap   = new Map();
+  for (const n of notes) for (const t of n.tags) tagMap.set(t, (tagMap.get(t) || 0) + 1);
+  const today    = new Date().toISOString().slice(0, 10);
+
+  let md = `---\ntitle: Vault Index\ndate: ${today}\ngenerated_by: VaultMind\n---\n\n`;
+  md += `# ${vault.vaultName}\n\n`;
+  md += `${notes.length} notes · ${resolved.length} links · ${tagMap.size} tags\n\n`;
+
+  if (mocs.length) {
+    md += `## Maps of Content\n`;
+    for (const m of mocs) md += `- [[${m.name}]] — ${m.outDeg || 0} outbound links\n`;
+    md += '\n';
+  }
+
+  const topTags = [...tagMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+  if (topTags.length) {
+    md += `## Top Tags\n`;
+    md += topTags.map(([t, c]) => `#${t} (${c})`).join('  ·  ') + '\n\n';
+  }
+
+  md += `## All Notes\n`;
+  for (const n of notes.sort((a, b) => a.name.localeCompare(b.name))) {
+    md += `- [[${n.name}]]${n.isMoc ? ' ⬡' : ''}\n`;
+  }
+  return md;
+}
+
+async function saveIndexMd() {
+  if (!vault.dirHandle) return;
+  try {
+    const fh = await vault.dirHandle.getFileHandle('index.md', { create: true });
+    const w  = await fh.createWritable();
+    await w.write(buildIndexMd());
+    await w.close();
+  } catch (e) { console.warn('index.md write failed:', e); }
+}
+
+async function chatSaveNote(content) {
+  const firstLine = content.trim().split('\n')[0].replace(/^#+\s*/, '').trim();
+  const title     = firstLine || 'AI Note';
+  const safe      = title.replace(/[/\\?%*:|"<>]/g, '-').slice(0, 50);
+  const ts        = new Date().toISOString().slice(0, 19).replace('T', '-').replace(/:/g, '');
+  const filename  = `${safe}-${ts}.md`;
+  const md        = `---\ntitle: "${title}"\ndate: ${new Date().toISOString().slice(0, 10)}\nsource: VaultMind Chat\n---\n\n${content}`;
+
+  if (vault.dirHandle) {
+    try {
+      const fh = await vault.dirHandle.getFileHandle(filename, { create: true });
+      const w  = await fh.createWritable();
+      await w.write(md); await w.close();
+      chatToast(`Saved: ${filename}`);
+      await saveIndexMd();  // keep index.md current
+      return;
+    } catch (e) { console.warn('Direct write failed, downloading', e); }
+  }
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([md], { type: 'text/markdown' })),
+    download: filename,
+  });
+  a.click();
+}
+
+function chatToast(msg) {
+  const t = Object.assign(document.createElement('div'), { textContent: msg });
+  t.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);padding:7px 16px;border-radius:20px;font-size:0.8rem;z-index:200;color:var(--node-hub)';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+async function chatSend() {
+  if (chat.streaming) return;
+  const ta  = document.getElementById('chat-textarea');
+  const msg = ta.value.trim();
+  if (!msg) return;
+
+  if (!vault.byPath.size) { chatToast('Load a vault first.'); return; }
+
+  ta.value = '';
+  chat.streaming = true;
+  document.getElementById('chat-send').disabled = true;
+
+  chat.history.push({ role: 'user', content: msg });
+  chatAddBubble('user', msg);
+
+  const pill = document.getElementById('chat-ctx-pill');
+  pill.textContent = getCtxLabel();
+  pill.style.display = 'block';
+
+  const systemContent = await buildSystemPrompt(msg);
+  const apiMessages = [
+    { role: 'system', content: systemContent },
+    ...chat.history.slice(-8),
+  ];
+
+  const stopBtn = document.getElementById('chat-stop');
+  const finish = () => {
+    chat.streaming = false;
+    chat.webResults = null;
+    stopBtn.style.display = 'none';
+    document.getElementById('chat-send').disabled = (chat.mode === 'local' && !chat.modelReady);
+    updateSearchBtn();
+  };
+  stopBtn.style.display = '';
+
+  if (chat.mode === 'local' && !chat.modelReady) {
+    chatAddBubble('assistant', 'Select a model and click Load Model first.');
+    finish();
+    return;
+  }
+
+  if (chat.mode === 'local') {
+    const { div, bubbleId } = chatAddBubble('assistant', '');
+    let full = '';
+    const msgId = bubbleId;
+    chat.worker.onmessage = ({ data }) => {
+      if (data.type === 'token') {
+        full += data.token;
+        const el = document.getElementById(msgId);
+        if (el) { el.textContent += data.token; document.getElementById('chat-messages').scrollTop = 9999; }
+      } else if (data.type === 'complete') {
+        chatFinalizeAssistant(div, full);
+        finish();
+      } else if (data.type === 'error') {
+        const el = document.getElementById(msgId);
+        if (el) el.textContent += '\n[Error: ' + data.data + ']';
+        finish();
+      }
+    };
+    chat.worker.postMessage({ type: 'generate', messages: apiMessages, id: msgId, maxTokens: 600 });
+  } else {
+    // Streaming API (OpenAI-compatible)
+    const apiKey   = document.getElementById('chat-api-key').value.trim();
+    const apiModel = document.getElementById('chat-api-model').value.trim();
+    if (!apiModel) { chatAddBubble('assistant', 'Select a model from the list or type a model ID.'); finish(); return; }
+    const { div, bubbleId } = chatAddBubble('assistant', '');
+    let full = '';
+    try {
+      const url   = document.getElementById('chat-api-url').value.trim();
+      const key   = apiKey;
+      const model = apiModel;
+      const resp  = await fetch(`${url}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: `Bearer ${key}` } : {}) },
+        body: JSON.stringify({ model, messages: apiMessages, stream: true, max_tokens: 600 }),
+      });
+      if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+      const reader  = resp.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        for (const line of decoder.decode(value).split('\n')) {
+          if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+          try {
+            const tok = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content ?? '';
+            if (tok) {
+              full += tok;
+              const el = document.getElementById(bubbleId);
+              if (el) { el.textContent += tok; document.getElementById('chat-messages').scrollTop = 9999; }
+            }
+          } catch { /* skip */ }
+        }
+      }
+      chatFinalizeAssistant(div, full);
+    } catch (err) {
+      const el = document.getElementById(bubbleId);
+      if (el) el.textContent = 'Error: ' + err.message;
+    } finally { finish(); }
+  }
+}
+
+// ── API model discovery ───────────────────────────────────────────────────────
+
+async function discoverModels(baseUrl, apiKey) {
+  const base = baseUrl.replace(/\/+$/, '');
+  const headers = { 'Accept': 'application/json' };
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+  // Build endpoint list to try in order
+  const endpoints = [];
+  if (/\/v\d\/?$/.test(base)) {
+    endpoints.push(`${base}/models`);        // already ends in /v1 → /v1/models
+  } else {
+    endpoints.push(`${base}/v1/models`);     // standard OpenAI-compat
+    endpoints.push(`${base}/api/v1/models`); // LM Studio alternate path
+  }
+  endpoints.push(`${base}/api/tags`);        // Ollama native
+
+  let corsBlocked = false;
+
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (Array.isArray(data.data))   return data.data.map(m => m.id).filter(Boolean).sort();
+      if (Array.isArray(data.models)) return data.models.map(m => m.name || m.id).filter(Boolean).sort();
+    } catch (e) {
+      // "Failed to fetch" = network error OR CORS block — probe with no-cors to distinguish
+      if (e instanceof TypeError) {
+        try {
+          const probe = await fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(3000) });
+          if (probe.type === 'opaque') corsBlocked = true; // server up, CORS blocked
+        } catch { /* server not reachable */ }
+      }
+    }
+  }
+
+  if (corsBlocked) {
+    const isOllama = base.includes('11434');
+    throw new Error(isOllama
+      ? 'Ollama is running but CORS is blocked. Restart with: OLLAMA_ORIGINS="*" ollama serve'
+      : 'LM Studio is running but CORS is blocked. In LM Studio: open the Local Server tab (plug icon in left sidebar) → find the CORS toggle → enable it, then restart the server.'
+    );
+  }
+
+  throw new Error('Could not reach server — is it running?');
+}
+
+let _allDiscoveredModels = [];
+
+// Preset URL chips
+document.querySelectorAll('.api-preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('chat-api-url').value = btn.dataset.url;
+    document.querySelectorAll('.api-preset').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Reset model selection so user re-discovers for the new provider
+    document.getElementById('chat-api-model').value = '';
+    document.getElementById('chat-api-model-select').style.display = 'none';
+    document.getElementById('chat-api-model-select').onchange = null;
+    document.getElementById('chat-api-model-select').onclick  = null;
+    document.getElementById('chat-api-model-select').onkeyup  = null;
+    document.getElementById('chat-model-filter').style.display = 'none';
+    _allDiscoveredModels = [];
+  });
+});
+
+document.getElementById('btn-fetch-models').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-fetch-models');
+  const url      = document.getElementById('chat-api-url').value.trim();
+  const key      = document.getElementById('chat-api-key').value.trim();
+  const modelIn  = document.getElementById('chat-api-model');
+  const modelSel = document.getElementById('chat-api-model-select');
+  const filterIn = document.getElementById('chat-model-filter');
+
+  if (!url) { setChatStatus('Enter a base URL first', 'error'); return; }
+
+  btn.textContent = '…';
+  btn.disabled = true;
+  setChatStatus('Fetching models…');
+
+  try {
+    _allDiscoveredModels = await discoverModels(url, key);
+    if (!_allDiscoveredModels.length) throw new Error('Endpoint returned 0 models');
+
+    // Populate select
+    function populateSelect(models) {
+      modelSel.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
+    }
+    populateSelect(_allDiscoveredModels);
+
+    // Restore previously typed model if it exists in the list
+    const prev = modelIn.value.trim();
+    if (prev && _allDiscoveredModels.includes(prev)) modelSel.value = prev;
+
+    // Show select as picker; text input stays visible and always shows current value
+    modelSel.style.display = '';
+    modelSel.size = Math.min(6, _allDiscoveredModels.length);
+    modelIn.value = modelSel.value; // prime with first/restored option
+    modelIn.readOnly = false;
+
+    if (_allDiscoveredModels.length > 15) {
+      filterIn.style.display = '';
+      filterIn.value = '';
+    }
+
+    // Sync list → text input, then collapse the list on click or Enter
+    function syncFromSel() { modelIn.value = modelSel.value; }
+    function pickAndClose() { syncFromSel(); modelSel.style.display = 'none'; filterIn.style.display = 'none'; }
+    modelSel.onchange = syncFromSel;                                  // arrow keys live-update
+    modelSel.onclick  = pickAndClose;                                 // click → fill + close
+    modelSel.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); pickAndClose(); } };
+
+    setChatStatus(`${_allDiscoveredModels.length} models found ✓`, 'ready');
+  } catch (err) {
+    setChatStatus('Discovery failed: ' + err.message, 'error');
+    modelSel.style.display = 'none';
+    filterIn.style.display = 'none';
+  } finally {
+    btn.textContent = '↻';
+    btn.disabled = false;
+  }
+});
+
+// Filter models in select
+document.getElementById('chat-model-filter').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  const filtered = q ? _allDiscoveredModels.filter(m => m.toLowerCase().includes(q)) : _allDiscoveredModels;
+  const modelSel = document.getElementById('chat-api-model-select');
+  modelSel.innerHTML = filtered.map(m => `<option value="${m}">${m}</option>`).join('');
+  modelSel.size = Math.min(6, filtered.length || 1);
+  if (filtered.length) {
+    modelSel.value = filtered[0];
+    document.getElementById('chat-api-model').value = filtered[0];
+  }
+});
+
+// ── Chat event listeners ──────────────────────────────────────────────────────
+
+document.querySelectorAll('.chat-mode-btn').forEach(btn => btn.addEventListener('click', () => {
+  const mode = btn.dataset.chatMode;
+  chat.mode  = mode;
+  document.querySelectorAll('.chat-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.chatMode === mode));
+  document.getElementById('chat-local-cfg').style.display = mode === 'local' ? '' : 'none';
+  document.getElementById('chat-api-cfg').style.display   = mode === 'api'   ? '' : 'none';
+  document.getElementById('chat-send').disabled = mode === 'local' ? !chat.modelReady : false;
+}));
+
+document.getElementById('btn-load-model').addEventListener('click', () => {
+  if (chat.modelLoading || chat.modelReady) return;
+  if (!navigator.gpu) { setChatStatus('WebGPU not supported — use API mode', 'error'); return; }
+
+  const key   = document.getElementById('chat-model-id').value;
+  const mdef  = CHAT_MODELS[key];
+  if (!mdef) return;
+
+  chat.modelLoading = true;
+  document.getElementById('btn-load-model').disabled = true;
+  document.getElementById('chat-prog').style.display = '';
+  setChatStatus('Starting…');
+
+  if (chat.worker) chat.worker.terminate();
+  chat.worker = makeWorker(CHAT_WORKER_SRC);
+  chat.worker.addEventListener('error', e => setChatStatus('Worker error: ' + e.message, 'error'));
+
+  chat.worker.onmessage = ({ data }) => {
+    if (data.type === 'progress') {
+      const pct = data.data?.progress != null ? Math.round(data.data.progress) : 0;
+      document.getElementById('chat-prog-fill').style.width = pct + '%';
+      if (pct > 0) setChatStatus(`Loading… ${pct}%`);
+    } else if (data.type === 'status') {
+      setChatStatus(data.data);
+    } else if (data.type === 'ready') {
+      chat.modelReady   = true;
+      chat.modelLoading = false;
+      setChatStatus('Model ready ✓', 'ready');
+      document.getElementById('chat-prog').style.display = 'none';
+      document.getElementById('chat-send').disabled = false;
+      // Collapse settings and show model name in summary
+      const settings = document.getElementById('chat-settings');
+      settings.removeAttribute('open');
+      const modelName = document.getElementById('chat-model-id').selectedOptions[0]?.text || 'Model';
+      document.getElementById('chat-settings-summary').textContent = `⚙ ${modelName}`;
+      document.querySelectorAll('#chat-messages [data-placeholder]').forEach(el => el.remove());
+      updateSearchBtn();
+    } else if (data.type === 'error') {
+      chat.modelLoading = false;
+      setChatStatus('Error: ' + data.data, 'error');
+      document.getElementById('chat-prog').style.display = 'none';
+      document.getElementById('btn-load-model').disabled = false;
+    }
+  };
+  chat.worker.postMessage({ type: 'load', modelId: mdef.id, dtype: mdef.dtype, modelType: mdef.type });
+});
+
+document.getElementById('chat-send').addEventListener('click', chatSend);
+document.getElementById('chat-stop').addEventListener('click', () => {
+  if (chat.worker) chat.worker.postMessage({ type: 'stop' });
+});
+document.getElementById('chat-textarea').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); }
+});
+
+document.getElementById('chat-panel').addEventListener('click', e => {
+  const btn = e.target.closest('[data-save]');
+  if (!btn) return;
+  const bubble = btn.closest('.chat-msg')?.querySelector('.chat-bubble');
+  if (bubble) chatSaveNote(bubble.textContent);
+});
+
+// ── Search provider UI ────────────────────────────────────────────────────────
+
+function updateSearchBtn() {
+  const btn = document.getElementById('chat-search-send');
+  const canSend = chat.mode === 'local' ? chat.modelReady : !!document.getElementById('chat-api-key').value.trim();
+  btn.style.display = isSearchConfigured() ? '' : 'none';
+  btn.disabled = !isSearchConfigured() || !canSend || chat.streaming;
+}
+
+(function initSearchUI() {
+  const providerEl  = document.getElementById('search-provider');
+  const keyEl       = document.getElementById('search-key');
+  const urlEl       = document.getElementById('search-url');
+
+  // Restore saved values
+  const cfg = getSearchConfig();
+  providerEl.value = cfg.provider;
+  keyEl.value      = cfg.apiKey;
+  urlEl.value      = cfg.url;
+
+  function refreshSearchFields() {
+    const p = providerEl.value;
+    keyEl.style.display = (p !== 'none' && p !== 'searxng') ? '' : 'none';
+    urlEl.style.display = (p === 'searxng') ? '' : 'none';
+    updateSearchBtn();
+  }
+
+  providerEl.addEventListener('change', () => {
+    localStorage.setItem('vm_search_provider', providerEl.value);
+    refreshSearchFields();
+  });
+  keyEl.addEventListener('input', () => {
+    localStorage.setItem('vm_search_key', keyEl.value);
+    updateSearchBtn();
+  });
+  urlEl.addEventListener('input', () => {
+    localStorage.setItem('vm_search_url', urlEl.value);
+    updateSearchBtn();
+  });
+
+  refreshSearchFields();
+})();
+
+document.getElementById('chat-search-send').addEventListener('click', async () => {
+  const ta  = document.getElementById('chat-textarea');
+  const msg = ta.value.trim();
+  if (!msg || chat.streaming) return;
+  setChatStatus('Searching…');
+  try {
+    chat.webResults = await executeWebSearch(msg);
+    setChatStatus(`${chat.webResults.length} results — generating…`);
+  } catch (err) {
+    setChatStatus('Search failed: ' + err.message, 'error');
+    chat.webResults = null;
+    return;
+  }
+  chatSend();
+});
+
+window.addEventListener('resize', resizeCanvas);
+
+// ── Help modal ────────────────────────────────────────────────────────────────
+document.getElementById('btn-help').addEventListener('click', () => {
+  document.getElementById('help-modal').classList.add('open');
+});
+document.getElementById('help-close').addEventListener('click', () => {
+  document.getElementById('help-modal').classList.remove('open');
+});
+document.getElementById('help-close-2').addEventListener('click', () => {
+  document.getElementById('help-modal').classList.remove('open');
+});
+document.getElementById('help-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('help-modal'))
+    document.getElementById('help-modal').classList.remove('open');
+});
+document.querySelectorAll('.help-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.help-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.help-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('hp-' + tab.dataset.tab).classList.add('active');
+  });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('help-modal').classList.remove('open');
+});
+</script>
+
+
+</body>
+</html>
