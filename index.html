@@ -518,13 +518,17 @@ body {
 
 /* ── Help button ─────────────────────────────────────────────────────────────*/
 .help-btn {
-  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; margin-left: 6px;
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; margin-right: 8px;
   border: 1.5px solid var(--border); background: var(--surface2);
   color: var(--muted); font-size: 0.8rem; font-weight: 700; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: border-color 0.15s, color 0.15s;
 }
 .help-btn:hover { border-color: var(--accent-hi); color: var(--accent-hi); }
+
+/* ── Note panel expanded (eclipses graph) ────────────────────────────────────*/
+#body.note-expanded #graph-area { display: none; }
+#body.note-expanded #note-panel { flex: 1; min-width: 0; width: auto !important; }
 
 /* ── Help modal overlay ──────────────────────────────────────────────────────*/
 .help-overlay {
@@ -600,7 +604,7 @@ body {
     <button class="btn btn-primary" id="btn-open-folder">Open Vault Folder</button>
     <span style="color:var(--muted);font-size:0.85rem">or</span>
     <label class="btn btn-secondary" style="cursor:pointer">
-      Drop a ZIP <input type="file" id="file-input" accept=".zip" style="display:none">
+      Upload a ZIP <input type="file" id="file-input" accept=".zip" style="display:none">
     </label>
   </div>
   <div class="drop-zone" id="drop-zone">
@@ -622,6 +626,7 @@ body {
 <!-- ── App ────────────────────────────────────────── -->
 <div id="app">
   <header id="header">
+    <button class="help-btn" id="btn-help" title="Help">?</button>
     <span class="header-brand">VaultMind</span>
     <span style="color:var(--border)">│</span>
     <span class="header-vault" id="vault-name"></span>
@@ -633,7 +638,6 @@ body {
     <!-- Sidebar -->
     <aside id="sidebar">
       <div class="sidebar-tabs">
-        <button class="help-btn" id="btn-help" title="Help" style="margin-right:4px">?</button>
         <button class="tab-btn active" data-tab="notes">Notes</button>
         <button class="tab-btn" data-tab="audit">Audit</button>
       </div>
@@ -675,6 +679,7 @@ body {
         <span class="panel-title" id="panel-title"></span>
         <button class="close-btn" id="btn-edit-note" title="Edit note" style="font-size:0.78rem">✏️</button>
         <button class="close-btn" id="btn-chat-node" title="Focus chat on this note" style="font-size:0.75rem;width:auto;padding:0 6px">💬</button>
+        <button class="close-btn" id="btn-expand-panel" title="Expand note panel">⤢</button>
         <button class="close-btn" id="btn-close-panel">✕</button>
       </div>
       <div class="panel-meta" id="panel-meta"></div>
@@ -2007,6 +2012,28 @@ document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click
 document.getElementById('note-search').addEventListener('input', e => buildNoteList(e.target.value));
 
 document.getElementById('btn-close-panel').addEventListener('click', closeNotePanel);
+
+// ── Note panel expand ─────────────────────────────────────────────────────────
+(function () {
+  const body     = document.getElementById('body');
+  const btn      = document.getElementById('btn-expand-panel');
+  const LS_KEY   = 'vm-note-expanded';
+
+  function applyExpanded(expanded) {
+    body.classList.toggle('note-expanded', expanded);
+    btn.textContent = expanded ? '⤡' : '⤢';
+    btn.title       = expanded ? 'Restore graph' : 'Expand note panel';
+  }
+
+  // Restore last state
+  applyExpanded(localStorage.getItem(LS_KEY) === '1');
+
+  btn.addEventListener('click', () => {
+    const next = !body.classList.contains('note-expanded');
+    applyExpanded(next);
+    localStorage.setItem(LS_KEY, next ? '1' : '0');
+  });
+})();
 
 // ── Note editor ───────────────────────────────────────────────────────────────
 
