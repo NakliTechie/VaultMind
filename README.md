@@ -187,6 +187,12 @@ Expand *System prompt* inside chat Settings to customise the AI's persona and in
 | Graph simulation | Custom 2D/3D force layout |
 | Build tooling | None — one HTML file |
 
+## Palette
+
+Coloured with **`mexico-10 · NOCHE DE MUERTOS`** — Day of the Dead night, ofrenda lit by marigold candles. The graph reads as a memorial: cobalt notes, ofrenda-red orphans, copal-incense lime hubs, pan-de-muerto tan MOCs, marigold-candle yellow when selected. A second-brain rendered as the night you keep vigil for what came before.
+
+Palette pulled from [**Rangrez**](https://github.com/NakliTechie/rangrez), the global colour-palette library that backs all NakliTechie projects.
+
 ---
 
 ## Part of the NakliTechie series
