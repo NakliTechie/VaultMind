@@ -222,6 +222,66 @@ body {
 #graph-area { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
 #graph-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 #graph-canvas.grabbing { cursor: grabbing; }
+
+/* ── Bases (sidebar list + dashboard overlay) ──────────────────────────────── */
+.bases-list { display: flex; flex-direction: column; gap: 4px; }
+.bases-section-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 2px 0 4px; }
+.base-list-item {
+  display: flex; align-items: center; gap: 7px; width: 100%; text-align: left;
+  padding: 7px 9px; background: var(--surface2); border: 1px solid transparent;
+  border-radius: 6px; color: var(--text); cursor: pointer; font-size: 0.82rem;
+}
+.base-list-item:hover { border-color: var(--border); }
+.base-list-item.active { border-color: var(--accent); background: var(--surface); }
+.base-list-icon { color: var(--tag-col); }
+.base-list-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.base-list-tag { font-size: 0.6rem; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+.base-gen-btn { justify-content: flex-start; text-align: left; }
+
+#bases-panel {
+  position: absolute; inset: 0; z-index: 20; background: var(--bg);
+  display: none; flex-direction: column;
+}
+#bases-panel.open { display: flex; }
+.bases-panel-head {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.bases-panel-title { font-weight: 700; font-size: 0.95rem; white-space: nowrap; }
+.base-view-tabs { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
+.base-view-tab {
+  padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--muted); cursor: pointer; font-size: 0.76rem; white-space: nowrap;
+}
+.base-view-tab.active { color: var(--text); border-color: var(--accent); background: var(--surface); }
+.bases-panel-count { font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
+.bases-panel-body { flex: 1; overflow: auto; padding: 14px; }
+.base-empty { color: var(--muted); font-style: italic; padding: 30px; text-align: center; }
+
+.base-table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+.base-table th, .base-table td {
+  text-align: left; padding: 7px 11px; border-bottom: 1px solid var(--border);
+  vertical-align: top; max-width: 380px; overflow: hidden; text-overflow: ellipsis;
+}
+.base-table thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.base-th { cursor: pointer; color: var(--muted); font-weight: 600; white-space: nowrap; user-select: none; }
+.base-th:hover { color: var(--text); }
+.base-table tbody tr:hover { background: var(--surface2); }
+.base-link { color: var(--accent-hi); cursor: pointer; text-decoration: none; }
+.base-link:hover { text-decoration: underline; }
+.base-name-cell { font-weight: 600; }
+
+.base-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.base-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 11px 12px; cursor: pointer; transition: border-color 0.15s; overflow: hidden;
+}
+.base-card:hover { border-color: var(--accent); }
+.base-card-cover { height: 96px; margin: -11px -12px 9px; background-size: cover; background-position: center; }
+.base-card-title { font-weight: 700; font-size: 0.86rem; margin-bottom: 6px; color: var(--text); word-break: break-word; }
+.base-card-prop { display: flex; justify-content: space-between; gap: 8px; font-size: 0.74rem; padding: 1px 0; }
+.base-card-key { color: var(--muted); }
+.base-card-val { color: var(--text); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #graph-canvas.rotating { cursor: crosshair; }
 
 #rot-hint {
@@ -796,12 +856,16 @@ body {
     <aside id="sidebar">
       <div class="sidebar-tabs">
         <button class="tab-btn active" data-tab="notes">Notes</button>
+        <button class="tab-btn" data-tab="bases">⊞ Bases</button>
         <button class="tab-btn" data-tab="audit">Audit</button>
         <button class="tab-btn" data-tab="ingest">📥</button>
       </div>
       <div class="tab-panel active" id="tab-notes">
         <input type="text" class="search-box" id="note-search" placeholder="Search notes…" autocomplete="off">
         <div class="note-list" id="note-list"></div>
+      </div>
+      <div class="tab-panel" id="tab-bases">
+        <div class="bases-list" id="bases-list"><!-- built by JS --></div>
       </div>
       <div class="tab-panel" id="tab-audit">
         <!-- built by JS -->
@@ -844,6 +908,8 @@ body {
     <!-- Graph -->
     <div id="graph-area">
       <canvas id="graph-canvas"></canvas>
+      <!-- Bases dashboard overlay -->
+      <div id="bases-panel"><!-- built by JS --></div>
       <div id="tag-filter-bar">
         Filtered: <span id="tag-filter-label"></span>
         <button class="clear-filter" onclick="clearTagFilter()">✕</button>
@@ -1012,6 +1078,7 @@ body {
 
     <div class="help-tabs">
       <button class="help-tab active" data-tab="graph">🕸 Graph</button>
+      <button class="help-tab" data-tab="bases">⊞ Bases</button>
       <button class="help-tab" data-tab="ingest">📥 Ingest</button>
       <button class="help-tab" data-tab="audit">🔎 Audit</button>
       <button class="help-tab" data-tab="chat">💬 Chat</button>
@@ -1035,6 +1102,19 @@ body {
           <li><strong>⬡ Generate MOC for neighborhood</strong> — appears when you select a connected note. The AI reads that note and all its direct links, groups them into sections, and writes a Map of Content page to the vault root.</li>
         </ul>
         <p style="margin-top:8px"><strong>Node colours:</strong> pink = MOC · red = orphan (no links) · gold = selected. Colour families reflect link clusters.</p>
+      </div>
+
+      <!-- Bases -->
+      <div class="help-panel" id="hp-bases">
+        <p>The <strong>⊞ Bases</strong> tab renders your notes as live dashboards, driven by their frontmatter properties — VaultMind's reading of the Obsidian core <strong>Bases</strong> plugin. A Base is a lens you point at notes you already have, not a spreadsheet you fill in.</p>
+        <ul>
+          <li><strong>Reads <code>.base</code> files</strong> — any <code>.base</code> in your vault (folder or ZIP) is parsed and listed here. Each one renders as a <strong>table</strong> or <strong>card</strong> view; switch views from the panel header.</li>
+          <li><strong>Filters &amp; formulas</strong> — <code>and</code>/<code>or</code>/<code>not</code> trees, expressions like <code>source_count &gt;= 2</code> or <code>tags.contains("ai")</code>, and computed columns like <code>source_count * 10</code> are all evaluated in the browser.</li>
+          <li><strong>Sort live</strong> — click any column header to re-sort. <code>displayName</code> from the <code>properties</code> block becomes the header label.</li>
+          <li><strong>✦ All Notes</strong> — an auto-generated dashboard that works even if your vault has no <code>.base</code> files, built from your most common frontmatter fields.</li>
+          <li><strong>Generate <code>.base</code></strong> — one click writes <code>sources.base</code>, <code>entities.base</code>, or <code>stale.base</code> to your vault root (saved to disk in folder mode), ready to open in Obsidian itself.</li>
+        </ul>
+        <p style="margin-top:6px">Click any row or card to jump straight to that note in the graph.</p>
       </div>
 
       <!-- Ingest -->
@@ -1168,6 +1248,7 @@ const vault = {
   byName: new Map(),   // lowercase filename → note  (primary key)
   byPath: new Map(),   // path → note
   edges:  [],          // { source: lc-name, target: lc-name, resolved: bool }
+  bases:  new Map(),   // path → { path, name, raw, config }  (Obsidian .base files)
   vaultName: '',
   dirHandle: null,     // FileSystemDirectoryHandle — set when folder is opened
 };
@@ -1196,22 +1277,193 @@ const CLUSTER_PALETTE = ['#7c6af7','#58a6ff','#3fb950','#ffa657','#f85149','#e87
 
 // ── Markdown Parser ───────────────────────────────────────────────────────────
 
+// ── Minimal YAML parser (Obsidian frontmatter + .base subset) ────────────────
+// Supports nested maps (indentation), block lists (- item), inline flow
+// [a, b] / {k: v}, typed scalars (number/bool/null/quoted), block scalars (|/>),
+// and # comments. Not a full YAML implementation — covers the common subset
+// used by Obsidian properties and .base files.
+function yamlScalar(s) {
+  s = s.trim();
+  if (s === '' || s === '~' || s === 'null') return null;
+  if (s === 'true')  return true;
+  if (s === 'false') return false;
+  const q = s[0];
+  if ((q === '"' || q === "'") && s[s.length - 1] === q && s.length > 1) {
+    return s.slice(1, -1).replace(/\\"/g, '"');
+  }
+  if (s[0] === '[' || s[0] === '{') {
+    const flow = yamlFlow(s);
+    if (flow !== undefined) return flow;
+  }
+  if (/^-?\d+$/.test(s)) return parseInt(s, 10);
+  if (/^-?\d*\.\d+$/.test(s)) return parseFloat(s);
+  return s; // bare string (incl. dates, wikilinks, etc.)
+}
+
+// Parse an inline flow collection: [a, b, {k: v}] or {k: v, j: w}
+function yamlFlow(s) {
+  let i = 0;
+  const ws = () => { while (i < s.length && /\s/.test(s[i])) i++; };
+  function val() {
+    ws();
+    if (s[i] === '[') {
+      i++; const arr = []; ws();
+      if (s[i] === ']') { i++; return arr; }
+      while (i < s.length) {
+        arr.push(val()); ws();
+        if (s[i] === ',') { i++; continue; }
+        if (s[i] === ']') { i++; break; }
+        break;
+      }
+      return arr;
+    }
+    if (s[i] === '{') {
+      i++; const obj = {}; ws();
+      if (s[i] === '}') { i++; return obj; }
+      while (i < s.length) {
+        ws(); const k = scan(true);
+        ws(); if (s[i] === ':') i++;
+        obj[k] = val(); ws();
+        if (s[i] === ',') { i++; continue; }
+        if (s[i] === '}') { i++; break; }
+        break;
+      }
+      return obj;
+    }
+    return yamlScalar(scan(false));
+  }
+  function scan(isKey) {
+    let start = i, depth = 0, quote = null;
+    while (i < s.length) {
+      const c = s[i];
+      if (quote) { if (c === quote) quote = null; i++; continue; }
+      if (c === '"' || c === "'") { quote = c; i++; continue; }
+      if (c === '[' || c === '{') { depth++; i++; continue; }
+      if (c === ']' || c === '}') { if (depth === 0) break; depth--; i++; continue; }
+      if (depth === 0 && (c === ',' || (isKey && c === ':'))) break;
+      i++;
+    }
+    return s.slice(start, i);
+  }
+  try { return val(); } catch { return undefined; }
+}
+
+// Strip a trailing # comment that is not inside quotes
+function yamlStripComment(line) {
+  let quote = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quote) { if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c === '#' && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i);
+  }
+  return line;
+}
+
+function parseYaml(text) {
+  const raw = String(text).replace(/\r\n/g, '\n').split('\n');
+  const lines = [];
+  for (const r of raw) {
+    const noComment = yamlStripComment(r);
+    if (noComment.trim() === '') continue;
+    lines.push({ indent: noComment.match(/^ */)[0].length, text: noComment.trim(), raw: noComment });
+  }
+  let pos = 0;
+
+  function parseBlock(minIndent) {
+    if (pos >= lines.length) return null;
+    const first = lines[pos];
+    if (first.indent < minIndent) return null;
+    if (first.text === '-' || first.text.startsWith('- ')) return parseList(first.indent);
+    return parseMap(first.indent);
+  }
+
+  function parseMap(indent) {
+    const obj = {};
+    while (pos < lines.length) {
+      const line = lines[pos];
+      if (line.indent < indent) break;
+      if (line.indent > indent) { pos++; continue; }
+      const m = line.text.match(/^("(?:[^"\\]|\\.)*"|'[^']*'|[^:]+?)\s*:\s*(.*)$/);
+      if (!m) { pos++; continue; }
+      const k = yamlScalar(m[1].trim());
+      const rest = m[2].trim();
+      pos++;
+      if (rest === '|' || rest === '>') {
+        obj[k] = parseBlockScalar(indent, rest);
+      } else if (rest === '') {
+        obj[k] = (pos < lines.length && lines[pos].indent > indent) ? parseBlock(indent + 1) : null;
+      } else {
+        obj[k] = yamlScalar(rest);
+      }
+    }
+    return obj;
+  }
+
+  function parseBlockScalar(parentIndent, style) {
+    const collected = [];
+    while (pos < lines.length && lines[pos].indent > parentIndent) {
+      collected.push(lines[pos].raw.slice(parentIndent).replace(/^ +/, ''));
+      pos++;
+    }
+    return collected.join(style === '|' ? '\n' : ' ');
+  }
+
+  function parseList(indent) {
+    const arr = [];
+    while (pos < lines.length) {
+      const line = lines[pos];
+      if (line.indent < indent || !(line.text === '-' || line.text.startsWith('- '))) break;
+      if (line.indent > indent) { pos++; continue; }
+      const after = line.text === '-' ? '' : line.text.slice(2).trim();
+      if (after === '') {
+        pos++;
+        arr.push(parseBlock(indent + 1));
+      } else if (/^[^\s'"][^:]*:(\s|$)/.test(after)) {
+        // list item that is itself a map: "- key: value"
+        const fakeIndent = indent + 2;
+        lines[pos] = { indent: fakeIndent, text: after, raw: ' '.repeat(fakeIndent) + after };
+        arr.push(parseMap(fakeIndent));
+      } else {
+        pos++;
+        arr.push(yamlScalar(after));
+      }
+    }
+    return arr;
+  }
+
+  const result = parseBlock(0);
+  return result == null ? {} : result;
+}
+
 function parseFrontmatter(text) {
   const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!m) return { fm: {}, body: text };
-  const fm = {};
-  for (const line of m[1].split('\n')) {
-    const kv = line.match(/^([\w-]+)\s*:\s*(.+)$/);
-    if (!kv) continue;
-    const [, k, v] = kv;
-    const val = v.trim();
-    if (val.startsWith('[')) {
-      try { fm[k] = JSON.parse(val.replace(/'/g, '"')); } catch { fm[k] = val; }
-    } else {
-      fm[k] = val.replace(/^["']|["']$/g, '');
-    }
-  }
+  let fm = {};
+  try { const parsed = parseYaml(m[1]); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) fm = parsed; }
+  catch { fm = {}; }
   return { fm, body: m[2] };
+}
+
+// Serialize a single frontmatter value back to YAML (inline). Keeps arrays,
+// numbers, and booleans lossless on round-trip through the editor.
+function yamlDumpValue(v) {
+  if (v == null) return '';
+  if (Array.isArray(v)) return '[' + v.map(yamlDumpValue).join(', ') + ']';
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (typeof v === 'object') return '[' + Object.entries(v).map(([k, val]) => `${k}: ${yamlDumpValue(val)}`).join(', ') + ']';
+  const s = String(v);
+  // Quote strings that contain YAML-significant characters
+  if (s === '' || /[:#\[\]{},&*!|>'"%@`]/.test(s) || /^[\s]|[\s]$/.test(s)) return JSON.stringify(s);
+  return s;
+}
+
+// Serialize a frontmatter object to a complete --- block (with trailing newline).
+function dumpFrontmatter(fm) {
+  const lines = ['---'];
+  for (const [k, v] of Object.entries(fm)) lines.push(`${k}: ${yamlDumpValue(v)}`);
+  lines.push('---', '');
+  return lines.join('\n') + '\n';
 }
 
 function extractWikilinks(text) {
@@ -1267,7 +1519,7 @@ function parseNote(path, content) {
 // ── Vault Processor ───────────────────────────────────────────────────────────
 
 async function processFiles(files) {
-  vault.byName.clear(); vault.byPath.clear(); vault.edges = [];
+  vault.byName.clear(); vault.byPath.clear(); vault.edges = []; vault.bases.clear();
 
   const total = files.length;
   setProgress(5, `Parsing ${total} notes…`);
@@ -1277,6 +1529,7 @@ async function processFiles(files) {
     const { path, content } = files[i];
     if (i % 100 === 0) { setProgress(5 + (i / total) * 40, `Parsing ${i} / ${total}…`); await tick(); }
     if (/\/(\.obsidian|\.trash|node_modules)\//.test(path)) continue;
+    if (/\.base$/i.test(path)) { registerBaseFile(path, content); continue; }
     const note = parseNote(path, content);
     const key  = note.filename.toLowerCase();
     vault.byPath.set(path, note);
@@ -2609,6 +2862,608 @@ function buildHeaderStats() {
   document.getElementById('vault-name').textContent = vault.vaultName;
 }
 
+// ── Obsidian Bases ────────────────────────────────────────────────────────────
+// Read .base files and render them as live table / card dashboards over note
+// frontmatter properties. Mirrors the Obsidian core Bases plugin: filters,
+// formulas, sort, group, and limit, all evaluated in-browser.
+
+// --- expression evaluator (Pratt parser, never throws) ---
+function exprTokenize(src) {
+  const toks = []; let i = 0;
+  const isId = c => /[A-Za-z0-9_$]/.test(c);
+  while (i < src.length) {
+    const c = src[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === '"' || c === "'") {
+      let j = i + 1, s = '';
+      while (j < src.length && src[j] !== c) { if (src[j] === '\\') { s += src[j + 1]; j += 2; continue; } s += src[j++]; }
+      toks.push({ t: 'str', v: s }); i = j + 1; continue;
+    }
+    if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1]))) {
+      let j = i; while (j < src.length && /[0-9.]/.test(src[j])) j++;
+      toks.push({ t: 'num', v: parseFloat(src.slice(i, j)) }); i = j; continue;
+    }
+    if (/[A-Za-z_$]/.test(c)) {
+      let j = i; while (j < src.length && isId(src[j])) j++;
+      const w = src.slice(i, j);
+      if (w === 'true') toks.push({ t: 'bool', v: true });
+      else if (w === 'false') toks.push({ t: 'bool', v: false });
+      else if (w === 'null') toks.push({ t: 'null', v: null });
+      else toks.push({ t: 'id', v: w });
+      i = j; continue;
+    }
+    const two = src.slice(i, i + 2);
+    if (['==', '!=', '>=', '<=', '&&', '||'].includes(two)) { toks.push({ t: 'op', v: two }); i += 2; continue; }
+    if ('+-*/%<>!.,()[]'.includes(c)) { toks.push({ t: 'op', v: c }); i++; continue; }
+    i++;
+  }
+  toks.push({ t: 'eof', v: null });
+  return toks;
+}
+function exprParse(src) {
+  const toks = exprTokenize(src); let p = 0;
+  const peek = () => toks[p], next = () => toks[p++];
+  const eat = v => { if (toks[p].v === v) { p++; return true; } return false; };
+  const BIN = { '||': 1, '&&': 2, '==': 3, '!=': 3, '<': 4, '>': 4, '<=': 4, '>=': 4, '+': 5, '-': 5, '*': 6, '/': 6, '%': 6 };
+  function parseExpr(min) {
+    let left = parseUnary();
+    while (true) {
+      const tk = peek();
+      if (tk.t !== 'op' || !(tk.v in BIN) || BIN[tk.v] < min) break;
+      next(); left = { k: 'bin', op: tk.v, left, right: parseExpr(BIN[tk.v] + 1) };
+    }
+    return left;
+  }
+  function parseUnary() {
+    const tk = peek();
+    if (tk.t === 'op' && (tk.v === '!' || tk.v === '-')) { next(); return { k: 'un', op: tk.v, arg: parseUnary() }; }
+    return parsePostfix();
+  }
+  function parsePostfix() {
+    let node = parsePrimary();
+    while (true) {
+      const tk = peek();
+      if (tk.t === 'op' && tk.v === '.') { next(); node = { k: 'member', obj: node, name: next().v }; }
+      else if (tk.t === 'op' && tk.v === '(') { next(); node = { k: 'call', callee: node, args: parseArgs() }; }
+      else if (tk.t === 'op' && tk.v === '[') { next(); const idx = parseExpr(0); eat(']'); node = { k: 'index', obj: node, idx }; }
+      else break;
+    }
+    return node;
+  }
+  function parseArgs() {
+    const args = [];
+    if (peek().v === ')') { next(); return args; }
+    while (true) { args.push(parseExpr(0)); if (eat(',')) continue; eat(')'); break; }
+    return args;
+  }
+  function parsePrimary() {
+    const tk = next();
+    if (tk.t === 'num' || tk.t === 'str' || tk.t === 'bool' || tk.t === 'null') return { k: 'lit', v: tk.v };
+    if (tk.t === 'id') return { k: 'id', v: tk.v };
+    if (tk.t === 'op' && tk.v === '(') { const e = parseExpr(0); eat(')'); return e; }
+    if (tk.t === 'op' && tk.v === '[') {
+      const items = [];
+      if (peek().v !== ']') { while (true) { items.push(parseExpr(0)); if (eat(',')) continue; break; } }
+      eat(']'); return { k: 'list', items };
+    }
+    return { k: 'lit', v: null };
+  }
+  try { return parseExpr(0); } catch { return { k: 'lit', v: null }; }
+}
+const _exprCache = new Map();
+function compileExpr(src) {
+  if (_exprCache.has(src)) return _exprCache.get(src);
+  const ast = exprParse(String(src)); _exprCache.set(src, ast); return ast;
+}
+function baseAsDate(v) {
+  if (v instanceof Date) return v;
+  if (typeof v === 'string' && /\d{4}-\d{2}-\d{2}/.test(v)) { const d = new Date(v); return isNaN(d) ? null : d; }
+  return null;
+}
+function baseAsNum(v) {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v))) return Number(v);
+  return null;
+}
+function baseTruthy(v) {
+  if (Array.isArray(v)) return v.length > 0;
+  if (v == null || v === '' || v === false || v === 0) return false;
+  return true;
+}
+function baseCompare(a, b) {
+  const da = baseAsDate(a), db = baseAsDate(b);
+  if (da && db) return da - db;
+  const na = baseAsNum(a), nb = baseAsNum(b);
+  if (na != null && nb != null) return na - nb;
+  return String(a == null ? '' : a).localeCompare(String(b == null ? '' : b));
+}
+function baseLooseEq(a, b) {
+  if (a == null && b == null) return true;
+  if (Array.isArray(a)) return a.map(String).includes(String(b));
+  const na = baseAsNum(a), nb = baseAsNum(b);
+  if (na != null && nb != null) return na === nb;
+  return String(a) === String(b);
+}
+function baseCallMethod(recv, name, args) {
+  if (recv == null) return name === 'length' ? 0 : null;
+  if (Array.isArray(recv)) {
+    switch (name) {
+      case 'contains': return recv.map(String).includes(String(args[0]));
+      case 'containsAny': return args.some(a => recv.map(String).includes(String(a)));
+      case 'containsAll': return args.every(a => recv.map(String).includes(String(a)));
+      case 'length': return recv.length;
+      case 'isEmpty': return recv.length === 0;
+      case 'join': return recv.join(args[0] != null ? String(args[0]) : ', ');
+      case 'reverse': return [...recv].reverse();
+      case 'unique': return [...new Set(recv)];
+      case 'sort': return [...recv].sort(baseCompare);
+    }
+    return null;
+  }
+  const s = String(recv);
+  switch (name) {
+    case 'contains': return s.toLowerCase().includes(String(args[0]).toLowerCase());
+    case 'containsAny': return args.some(a => s.toLowerCase().includes(String(a).toLowerCase()));
+    case 'startsWith': return s.startsWith(String(args[0]));
+    case 'endsWith': return s.endsWith(String(args[0]));
+    case 'toLowerCase': case 'lower': return s.toLowerCase();
+    case 'toUpperCase': case 'upper': return s.toUpperCase();
+    case 'trim': return s.trim();
+    case 'title': return s.replace(/\b\w/g, c => c.toUpperCase());
+    case 'length': return s.length;
+    case 'isEmpty': return s.length === 0;
+    case 'replace': return s.split(String(args[0])).join(String(args[1] ?? ''));
+    case 'slice': return s.slice(args[0], args[1]);
+    case 'split': return s.split(String(args[0]));
+    case 'toFixed': { const n = baseAsNum(recv); return n == null ? s : n.toFixed(args[0] ?? 0); }
+    case 'round': { const n = baseAsNum(recv); return n == null ? null : Math.round(n); }
+    case 'abs': { const n = baseAsNum(recv); return n == null ? null : Math.abs(n); }
+    case 'date': return baseAsDate(recv);
+  }
+  return null;
+}
+function baseCallFunc(name, args) {
+  switch (name) {
+    case 'if': return baseTruthy(args[0]) ? args[1] : args[2];
+    case 'min': return Math.min(...args.map(a => baseAsNum(a) ?? Infinity));
+    case 'max': return Math.max(...args.map(a => baseAsNum(a) ?? -Infinity));
+    case 'sum': { const arr = Array.isArray(args[0]) ? args[0] : args; return arr.reduce((s, a) => s + (baseAsNum(a) || 0), 0); }
+    case 'number': return baseAsNum(args[0]);
+    case 'string': return args[0] == null ? '' : String(args[0]);
+    case 'list': return Array.isArray(args[0]) ? args[0] : args;
+    case 'length': return Array.isArray(args[0]) ? args[0].length : String(args[0] ?? '').length;
+    case 'date': return baseAsDate(args[0]);
+    case 'now': case 'today': return new Date();
+    case 'link': return args[0];
+    case 'concat': return args.map(a => Array.isArray(a) ? a : [a]).flat();
+    case 'abs': return Math.abs(baseAsNum(args[0]) || 0);
+    case 'round': return Math.round(baseAsNum(args[0]) || 0);
+    case 'floor': return Math.floor(baseAsNum(args[0]) || 0);
+    case 'ceil': return Math.ceil(baseAsNum(args[0]) || 0);
+  }
+  return null;
+}
+function baseEvalNode(node, ctx) {
+  switch (node.k) {
+    case 'lit': return node.v;
+    case 'list': return node.items.map(it => baseEvalNode(it, ctx));
+    case 'id': return ctx.resolve(node.v);
+    case 'un': { const v = baseEvalNode(node.arg, ctx); return node.op === '!' ? !baseTruthy(v) : -(baseAsNum(v) || 0); }
+    case 'member': {
+      if (node.obj.k === 'id' && ctx.isNamespace(node.obj.v)) return ctx.member(node.obj.v, node.name);
+      const obj = baseEvalNode(node.obj, ctx);
+      if (node.name === 'length') return Array.isArray(obj) ? obj.length : (obj == null ? 0 : String(obj).length);
+      if (obj && typeof obj === 'object' && !Array.isArray(obj) && node.name in obj) return obj[node.name];
+      return { __method: node.name, __recv: obj };
+    }
+    case 'index': { const obj = baseEvalNode(node.obj, ctx); const idx = baseEvalNode(node.idx, ctx); return obj == null ? null : obj[idx]; }
+    case 'call': {
+      const args = node.args.map(a => baseEvalNode(a, ctx));
+      if (node.callee.k === 'member') {
+        let recv;
+        if (node.callee.obj.k === 'id' && ctx.isNamespace(node.callee.obj.v)) recv = ctx.member(node.callee.obj.v, node.callee.name);
+        else recv = baseEvalNode(node.callee.obj, ctx);
+        return baseCallMethod(recv, node.callee.name, args);
+      }
+      if (node.callee.k === 'id') return baseCallFunc(node.callee.v, args);
+      const c = baseEvalNode(node.callee, ctx);
+      if (c && c.__method) return baseCallMethod(c.__recv, c.__method, args);
+      return null;
+    }
+    case 'bin': {
+      const op = node.op;
+      if (op === '&&') return baseTruthy(baseEvalNode(node.left, ctx)) && baseTruthy(baseEvalNode(node.right, ctx));
+      if (op === '||') { const l = baseEvalNode(node.left, ctx); return baseTruthy(l) ? l : baseEvalNode(node.right, ctx); }
+      const a = baseEvalNode(node.left, ctx), b = baseEvalNode(node.right, ctx);
+      switch (op) {
+        case '+': return (typeof a === 'string' || typeof b === 'string') ? String(a ?? '') + String(b ?? '') : (baseAsNum(a) || 0) + (baseAsNum(b) || 0);
+        case '-': return (baseAsNum(a) || 0) - (baseAsNum(b) || 0);
+        case '*': return (baseAsNum(a) || 0) * (baseAsNum(b) || 0);
+        case '/': return (baseAsNum(b) || 0) === 0 ? null : (baseAsNum(a) || 0) / baseAsNum(b);
+        case '%': return (baseAsNum(a) || 0) % (baseAsNum(b) || 1);
+        case '==': return baseLooseEq(a, b);
+        case '!=': return !baseLooseEq(a, b);
+        // Ordering against a missing value is never true (a note without the
+        // property shouldn't pass `prop < x`).
+        case '>': case '<': case '>=': case '<=': {
+          if (a == null || a === '' || b == null || b === '') return false;
+          const c = baseCompare(a, b);
+          return op === '>' ? c > 0 : op === '<' ? c < 0 : op === '>=' ? c >= 0 : c <= 0;
+        }
+      }
+    }
+  }
+  return null;
+}
+function baseEval(src, ctx) { try { return baseEvalNode(compileExpr(src), ctx); } catch { return null; } }
+
+// --- per-note evaluation context ---
+function makeBaseContext(note, config) {
+  const fm = note.fm || {};
+  const folder = note.path.includes('/') ? note.path.slice(0, note.path.lastIndexOf('/')) : '';
+  const dateOf = k => baseAsDate(fm[k]);
+  const file = {
+    name: note.name, basename: note.filename, path: note.path, ext: 'md', folder,
+    tags: Array.from(note.tags || []), links: Array.from(note.wikilinks || []),
+    size: (note.body || '').length,
+    mtime: dateOf('last_updated') || dateOf('date_ingested') || dateOf('updated') || null,
+    ctime: dateOf('first_seen') || dateOf('created') || dateOf('date') || null,
+    inlinks: note.inDeg || 0, outlinks: note.outDeg || 0,
+  };
+  const formulas = (config && config.formulas) || {};
+  const fcache = {}, computing = new Set();
+  const ctx = {
+    note, file,
+    isNamespace: n => n === 'file' || n === 'formula' || n === 'note' || n === 'this',
+    member(ns, name) {
+      if (ns === 'file') return file[name];
+      if (ns === 'formula') return ctx.formula(name);
+      return fm[name];
+    },
+    formula(name) {
+      if (name in fcache) return fcache[name];
+      if (!(name in formulas) || computing.has(name)) return null;
+      computing.add(name);
+      const v = baseEval(formulas[name], ctx);
+      computing.delete(name); fcache[name] = v; return v;
+    },
+    resolve(id) {
+      if (id === 'file') return file;
+      if (id === 'note' || id === 'this') return fm;
+      if (id in fm) return fm[id];
+      if (id === 'tags') return file.tags;
+      if (id in file) return file[id];
+      return null;
+    },
+  };
+  return ctx;
+}
+function baseColumnValue(ctx, key) {
+  if (key.startsWith('file.')) return ctx.member('file', key.slice(5));
+  if (key.startsWith('formula.')) return ctx.formula(key.slice(8));
+  if (key.startsWith('note.')) return ctx.member('note', key.slice(5));
+  return ctx.resolve(key);
+}
+function baseEvalFilter(filter, ctx) {
+  if (filter == null) return true;
+  if (typeof filter === 'string') return baseTruthy(baseEval(filter, ctx));
+  if (Array.isArray(filter)) return filter.every(f => baseEvalFilter(f, ctx));
+  if (typeof filter === 'object') {
+    if ('and' in filter) return (Array.isArray(filter.and) ? filter.and : [filter.and]).every(f => baseEvalFilter(f, ctx));
+    if ('or' in filter)  return (Array.isArray(filter.or)  ? filter.or  : [filter.or]).some(f => baseEvalFilter(f, ctx));
+    if ('not' in filter) return !baseEvalFilter(filter.not, ctx);
+  }
+  return true;
+}
+function humanize(s) {
+  return String(s).replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+function baseColLabel(config, key) {
+  const props = (config && config.properties) || {};
+  if (props[key] && props[key].displayName) return props[key].displayName;
+  if (key === 'file.name') return 'Name';
+  if (key.startsWith('file.')) return humanize(key.slice(5));
+  if (key.startsWith('formula.')) return humanize(key.slice(8));
+  if (key.startsWith('note.')) return humanize(key.slice(5));
+  return humanize(key);
+}
+function baseFmtCell(v) {
+  if (v == null) return '';
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (Array.isArray(v)) return v.join(', ');
+  if (typeof v === 'boolean') return v ? '✓' : '—';
+  return String(v);
+}
+
+// --- view computation: notes → filtered, sorted, limited rows ---
+function computeBaseView(base, viewIdx) {
+  const config = base.config || {};
+  const view = (config.views || [])[viewIdx] || {};
+  let columns = (view.order && view.order.length) ? view.order.slice()
+              : Object.keys(config.properties || {});
+  if (!columns.length) columns = ['file.name'];
+  if (!columns.includes('file.name')) columns.unshift('file.name');
+
+  const rows = [];
+  for (const note of vault.byPath.values()) {
+    if (note.path.startsWith('_') && base.config.synthetic !== true && false) continue;
+    const ctx = makeBaseContext(note, config);
+    if (!baseEvalFilter(config.filters, ctx)) continue;
+    if (!baseEvalFilter(view.filters, ctx)) continue;
+    const cells = {};
+    for (const k of columns) cells[k] = baseColumnValue(ctx, k);
+    rows.push({ note, ctx, cells });
+  }
+
+  // sort: explicit override (header click) > view.sort
+  const sortSpec = basesState.sortOverride
+    ? [basesState.sortOverride]
+    : (view.sort || []).map(s => typeof s === 'string' ? { property: s, direction: 'ASC' } : s);
+  for (let i = sortSpec.length - 1; i >= 0; i--) {
+    const s = sortSpec[i]; const dir = (s.direction || 'ASC').toUpperCase() === 'DESC' ? -1 : 1;
+    rows.sort((a, b) => dir * baseCompare(baseColumnValue(a.ctx, s.property), baseColumnValue(b.ctx, s.property)));
+  }
+
+  const total = rows.length;
+  const limited = view.limit ? rows.slice(0, view.limit) : rows;
+  return { config, view, columns, rows: limited, total };
+}
+
+// --- base registry ---
+function registerBaseFile(path, content) {
+  let config = {};
+  try { const parsed = parseYaml(content); if (parsed && typeof parsed === 'object') config = parsed; } catch {}
+  if (!config.views || !config.views.length) config.views = [{ type: 'table', name: 'Table', order: ['file.name'] }];
+  const name = path.split('/').pop().replace(/\.base$/i, '');
+  vault.bases.set(path, { path, name, raw: content, config });
+}
+
+// --- synthetic "All Notes" base (works on any vault, .base files or not) ---
+function syntheticBaseConfig() {
+  const freq = new Map();
+  for (const n of vault.byPath.values()) for (const k of Object.keys(n.fm || {})) freq.set(k, (freq.get(k) || 0) + 1);
+  const skip = new Set(['title', 'aliases', 'cssclass', 'cssclasses']);
+  const top = [...freq.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k).filter(k => !skip.has(k)).slice(0, 5);
+  const order = ['file.name', ...top];
+  return {
+    name: 'All Notes', synthetic: true, properties: {},
+    views: [
+      { type: 'table', name: 'Table', order, sort: [{ property: 'file.name', direction: 'ASC' }] },
+      { type: 'cards', name: 'Cards', order },
+    ],
+  };
+}
+function listBases() {
+  const out = [{ path: '__synthetic__', name: 'All Notes', synthetic: true, config: syntheticBaseConfig() }];
+  for (const b of vault.bases.values()) out.push(b);
+  return out;
+}
+function getBase(path) {
+  if (path === '__synthetic__') return { path, name: 'All Notes', synthetic: true, config: syntheticBaseConfig() };
+  return vault.bases.get(path) || null;
+}
+
+// ── Bases UI ──────────────────────────────────────────────────────────────────
+const basesState = { activeBasePath: null, activeView: 0, sortOverride: null };
+
+function buildBasesList() {
+  const el = document.getElementById('bases-list');
+  if (!el) return;
+  const bases = listBases();
+  const fileBases = bases.filter(b => !b.synthetic);
+  let html = `<div class="bases-section-label">Dashboards</div>`;
+  html += bases.map(b => `
+    <button class="base-list-item${basesState.activeBasePath === b.path ? ' active' : ''}" data-base="${escHtml(b.path)}">
+      <span class="base-list-icon">${b.synthetic ? '✦' : '◫'}</span>
+      <span class="base-list-name">${escHtml(b.name)}</span>
+      ${b.synthetic ? '<span class="base-list-tag">auto</span>' : ''}
+    </button>`).join('');
+  html += `<div class="bases-section-label" style="margin-top:10px">Generate .base</div>
+    <button class="btn btn-secondary btn-sm base-gen-btn" data-gen="sources">＋ sources.base</button>
+    <button class="btn btn-secondary btn-sm base-gen-btn" data-gen="entities">＋ entities.base</button>
+    <button class="btn btn-secondary btn-sm base-gen-btn" data-gen="stale">＋ stale.base</button>`;
+  el.innerHTML = html;
+  el.querySelectorAll('.base-list-item').forEach(btn =>
+    btn.addEventListener('click', () => openBase(btn.dataset.base)));
+  el.querySelectorAll('.base-gen-btn').forEach(btn =>
+    btn.addEventListener('click', () => generateBaseFile(btn.dataset.gen)));
+}
+
+function openBase(path) {
+  const base = getBase(path);
+  if (!base) return;
+  basesState.activeBasePath = path;
+  basesState.activeView = 0;
+  basesState.sortOverride = null;
+  buildBasesList();
+  renderBasesPanel();
+  document.getElementById('bases-panel').classList.add('open');
+}
+function closeBasesPanel() {
+  document.getElementById('bases-panel').classList.remove('open');
+  basesState.activeBasePath = null;
+  buildBasesList();
+}
+
+function renderBasesPanel() {
+  const panel = document.getElementById('bases-panel');
+  const base = getBase(basesState.activeBasePath);
+  if (!base) { panel.classList.remove('open'); return; }
+  const views = base.config.views || [];
+  if (basesState.activeView >= views.length) basesState.activeView = 0;
+  const result = computeBaseView(base, basesState.activeView);
+
+  const viewTabs = views.map((v, i) =>
+    `<button class="base-view-tab${i === basesState.activeView ? ' active' : ''}" data-view="${i}">${escHtml(v.name || v.type || ('View ' + (i + 1)))}</button>`).join('');
+
+  const shown = result.rows.length, total = result.total;
+  const countLabel = shown < total ? `${shown} of ${total}` : `${total}`;
+  const body = result.view.type === 'cards'
+    ? renderBaseCards(result) : renderBaseTable(result);
+
+  panel.innerHTML = `
+    <div class="bases-panel-head">
+      <span class="bases-panel-title">${base.synthetic ? '✦' : '◫'} ${escHtml(base.name)}</span>
+      <div class="base-view-tabs">${viewTabs}</div>
+      <span class="bases-panel-count">${countLabel} note${total === 1 ? '' : 's'}</span>
+      <button class="close-btn" id="bases-close" title="Close">✕</button>
+    </div>
+    <div class="bases-panel-body">${body}</div>`;
+
+  panel.querySelectorAll('.base-view-tab').forEach(t => t.addEventListener('click', () => {
+    basesState.activeView = parseInt(t.dataset.view, 10); basesState.sortOverride = null; renderBasesPanel();
+  }));
+  panel.querySelector('#bases-close').addEventListener('click', closeBasesPanel);
+  panel.querySelectorAll('.base-th[data-key]').forEach(th => th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    const cur = basesState.sortOverride;
+    const dir = (cur && cur.property === key && cur.direction === 'ASC') ? 'DESC' : 'ASC';
+    basesState.sortOverride = { property: key, direction: dir };
+    renderBasesPanel();
+  }));
+  panel.querySelectorAll('[data-note-key]').forEach(el => el.addEventListener('click', () => {
+    selectNoteByKey(el.dataset.noteKey); closeBasesPanel();
+  }));
+}
+
+function renderBaseTable(result) {
+  const { config, columns, rows } = result;
+  const sort = basesState.sortOverride;
+  const head = columns.map(k => {
+    const arrow = sort && sort.property === k ? (sort.direction === 'DESC' ? ' ▾' : ' ▴') : '';
+    return `<th class="base-th" data-key="${escHtml(k)}">${escHtml(baseColLabel(config, k))}${arrow}</th>`;
+  }).join('');
+  if (!rows.length) return `<div class="base-empty">No notes match this view.</div>`;
+  const body = rows.map(r => {
+    const tds = columns.map(k => {
+      const v = r.cells[k];
+      if (k === 'file.name') return `<td class="base-name-cell"><a class="base-link" data-note-key="${escHtml(r.note.filename.toLowerCase())}">${escHtml(baseFmtCell(v))}</a></td>`;
+      return `<td>${escHtml(baseFmtCell(v))}</td>`;
+    }).join('');
+    return `<tr>${tds}</tr>`;
+  }).join('');
+  return `<table class="base-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function renderBaseCards(result) {
+  const { config, view, columns, rows } = result;
+  if (!rows.length) return `<div class="base-empty">No notes match this view.</div>`;
+  const imageKey = view.image || (config.properties && Object.keys(config.properties).find(k => /image|cover|thumbnail/i.test(k)));
+  const propCols = columns.filter(k => k !== 'file.name');
+  const cards = rows.map(r => {
+    const name = baseFmtCell(r.cells['file.name']);
+    let cover = '';
+    if (imageKey) {
+      const iv = baseColumnValue(r.ctx, imageKey);
+      if (iv && /^(https?:\/\/|\/|\.\/).*\.(png|jpe?g|gif|webp|svg)/i.test(String(iv)))
+        cover = `<div class="base-card-cover" style="background-image:url('${escHtml(String(iv))}')"></div>`;
+    }
+    const props = propCols.map(k => {
+      const val = baseFmtCell(r.cells[k]);
+      if (!val) return '';
+      return `<div class="base-card-prop"><span class="base-card-key">${escHtml(baseColLabel(config, k))}</span><span class="base-card-val">${escHtml(val)}</span></div>`;
+    }).join('');
+    return `<div class="base-card" data-note-key="${escHtml(r.note.filename.toLowerCase())}">
+      ${cover}<div class="base-card-title">${escHtml(name)}</div>${props}</div>`;
+  }).join('');
+  return `<div class="base-cards">${cards}</div>`;
+}
+
+// --- generate starter .base files from VaultMind's own frontmatter schema ---
+const BASE_TEMPLATES = {
+  sources: `# Source notes ingested by VaultMind, newest first.
+filters:
+  and:
+    - 'file.path.startsWith("_sources")'
+formulas:
+  ingested: 'file.ctime'
+properties:
+  file.name:
+    displayName: Source
+  source_count:
+    displayName: Sources
+views:
+  - type: table
+    name: Sources
+    order:
+      - file.name
+      - status
+      - file.ctime
+    sort:
+      - property: file.ctime
+        direction: DESC
+  - type: cards
+    name: Gallery
+    order:
+      - file.name
+      - status
+`,
+  entities: `# Entity & concept pages created by VaultMind, by how many sources mention them.
+filters:
+  and:
+    - 'vaultmind_version'
+    - 'page_type != "moc"'
+properties:
+  file.name:
+    displayName: Entity
+  source_count:
+    displayName: Sources
+  last_updated:
+    displayName: Updated
+views:
+  - type: table
+    name: Entities
+    order:
+      - file.name
+      - page_type
+      - source_count
+      - last_updated
+    sort:
+      - property: source_count
+        direction: DESC
+  - type: cards
+    name: Cards
+    order:
+      - file.name
+      - page_type
+      - source_count
+`,
+  stale: `# Entity pages that may be stale — last updated before 2026. Re-synthesize from the Audit tab.
+filters:
+  and:
+    - 'vaultmind_version'
+    - 'page_type != "moc"'
+    - 'last_updated < "2026-01-01"'
+properties:
+  file.name:
+    displayName: Page
+  last_updated:
+    displayName: Last updated
+views:
+  - type: table
+    name: Stale pages
+    order:
+      - file.name
+      - source_count
+      - last_updated
+    sort:
+      - property: last_updated
+        direction: ASC
+`,
+};
+
+async function generateBaseFile(kind) {
+  const tpl = BASE_TEMPLATES[kind];
+  if (!tpl) return;
+  const filename = `${kind}.base`;
+  registerBaseFile(filename, tpl);
+  const wrote = await writeVaultFile([filename], tpl);
+  buildBasesList();
+  openBase(filename);
+  if (typeof chatToast === 'function')
+    chatToast(wrote ? `Wrote ${filename} to your vault` : `Created ${filename} (open a folder to save it to disk)`);
+}
+
 // ── Tag filtering ─────────────────────────────────────────────────────────────
 
 function setTagFilter(tag) {
@@ -2649,6 +3504,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  // The Bases dashboard overlay belongs to the Bases tab — hide it elsewhere.
+  if (btn.dataset.tab !== 'bases') {
+    const bp = document.getElementById('bases-panel');
+    if (bp) bp.classList.remove('open');
+  } else if (basesState.activeBasePath) {
+    document.getElementById('bases-panel').classList.add('open');
+  }
 }));
 
 document.getElementById('note-search').addEventListener('input', e => buildNoteList(e.target.value));
@@ -2835,14 +3697,7 @@ async function saveNoteEdit() {
       // Reconstruct the file: restore frontmatter if it had any
       const hasFm = Object.keys(_editNote.fm).length > 0;
       let fileContent = content;
-      if (hasFm) {
-        const fmLines = ['---'];
-        for (const [k, v] of Object.entries(_editNote.fm)) {
-          fmLines.push(`${k}: ${typeof v === 'string' ? JSON.stringify(v) : v}`);
-        }
-        fmLines.push('---', '');
-        fileContent = fmLines.join('\n') + '\n' + content;
-      }
+      if (hasFm) fileContent = dumpFrontmatter(_editNote.fm) + content;
       await w.write(fileContent);
       await w.close();
       _editNote._savedBody = content;
@@ -2937,6 +3792,7 @@ async function loadFiles(files) {
     await processFiles(files);
     buildNoteList('');
     buildAuditPanel();
+    buildBasesList();
     buildHeaderStats();
     saveIndexMd();  // write/update index.md if folder access exists
     startEmbedWorker(); // begin indexing vault for RAG
@@ -2980,7 +3836,7 @@ document.getElementById('btn-open-folder').addEventListener('click', async () =>
     async function walk(handle, path) {
       for await (const [name, entry] of handle) {
         if (name.startsWith('.') || name === 'node_modules') continue;
-        if (entry.kind === 'file' && name.endsWith('.md')) {
+        if (entry.kind === 'file' && (name.endsWith('.md') || name.endsWith('.base'))) {
           const file = await entry.getFile();
           files.push({ path: path + name, content: await file.text() });
         } else if (entry.kind === 'directory') {
@@ -3006,8 +3862,8 @@ async function handleZip(file) {
     if (typeof JSZip === 'undefined') throw new Error('JSZip failed to load — check your internet connection.');
     const zip     = await JSZip.loadAsync(file);
     const entries = Object.entries(zip.files)
-      .filter(([p, e]) => !e.dir && p.endsWith('.md') && !p.split('/').some(s => s.startsWith('.')));
-    if (entries.length === 0) { document.getElementById('loading').classList.remove('visible'); alert('No .md files found in this ZIP.'); return; }
+      .filter(([p, e]) => !e.dir && (p.endsWith('.md') || p.endsWith('.base')) && !p.split('/').some(s => s.startsWith('.')));
+    if (entries.length === 0) { document.getElementById('loading').classList.remove('visible'); alert('No .md or .base files found in this ZIP.'); return; }
     setProgress(5, `Found ${entries.length} notes, reading…`);
     const files = [];
     for (let i = 0; i < entries.length; i++) {
@@ -4931,12 +5787,7 @@ window.ingestAccept = async function(idx) {
         note.body += append;
         const hasFm = Object.keys(note.fm).length > 0;
         let fileContent = note.body;
-        if (hasFm) {
-          const lines = ['---'];
-          for (const [k, v] of Object.entries(note.fm)) lines.push(`${k}: ${typeof v === 'string' ? JSON.stringify(v) : v}`);
-          lines.push('---', '');
-          fileContent = lines.join('\n') + '\n' + note.body;
-        }
+        if (hasFm) fileContent = dumpFrontmatter(note.fm) + note.body;
         const fh = await getFileHandleFromPath(vault.dirHandle, note.path);
         const w  = await fh.createWritable();
         await w.write(fileContent); await w.close();

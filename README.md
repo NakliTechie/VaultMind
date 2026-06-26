@@ -1,6 +1,6 @@
 # 🧠 VaultMind
 
-An Obsidian vault explorer and builder that runs entirely in your browser — force graph, semantic search, AI chat, in-place editing, and a full ingestion pipeline that turns raw content into structured, interlinked notes. No server. No API keys required. Nothing leaves your device.
+An Obsidian vault explorer and builder that runs entirely in your browser — force graph, live Bases dashboards, semantic search, AI chat, in-place editing, and a full ingestion pipeline that turns raw content into structured, interlinked notes. No server. No API keys required. Nothing leaves your device.
 
 **[→ Try it live](https://vaultmind.naklitechie.com)**
 
@@ -9,6 +9,7 @@ An Obsidian vault explorer and builder that runs entirely in your browser — fo
 Drop your Obsidian vault (as a folder or a ZIP) and get:
 
 - **Force-directed graph** — every note is a node, every `[[wikilink]]` is an edge. Clusters emerge automatically. Switch between 2D and 3D perspective at any time.
+- **Bases dashboards** — opens your Obsidian `.base` files as live table and card views over note properties, with filters, sort, and formulas evaluated in-browser. No `.base` files yet? An auto-generated "All Notes" dashboard works on any vault, and one click writes starter Bases built from VaultMind's own frontmatter.
 - **Ingestion pipeline** — drop files, paste URLs, record voice memos, or save to `_inbox/`. The AI extracts entities, writes source notes, proposes linked entity pages, and updates the graph live.
 - **AI chat** — ask questions about your vault. Context is scoped to the selected note and its 1-hop neighbours (micro-RAG). Works with a local WebGPU model (Gemma 4, Qwen, SmolLM) or any OpenAI-compatible API.
 - **Persistent semantic index** — embeddings are saved to IndexedDB after the first run. Subsequent loads only re-embed notes that changed. A 500-note vault goes from "indexing…" to "cached ✓" in under a second.
@@ -100,7 +101,8 @@ my-vault/
 ├── _schema.md               ← AI processing rules (user-editable)
 ├── Andrej Karpathy.md       ← entity page (AI-created)
 ├── WebGPU.md                ← concept page (AI-created)
-└── ...                      ← your existing notes (untouched)
+├── entities.base            ← generated Bases dashboard (optional)
+└── ...                      ← your existing notes and .base files (untouched)
 ```
 
 ---
@@ -118,6 +120,33 @@ VaultMind embeds every note using `all-MiniLM-L6-v2` (384-dim vectors, WASM) and
 | **After ingest** | Accepting new entity pages triggers an incremental re-index — new notes are searchable immediately. |
 
 **Micro-RAG** — when a note is selected, context is scoped to that note and its 1-hop neighbours before expanding to the full vault. Cosine similarity threshold: 0.2 (local) / 0.25 (global).
+
+---
+
+## Bases (live dashboards)
+
+VaultMind reads [Obsidian Bases](https://obsidian.md/help/bases/syntax) — the core plugin that turns your notes into a database driven by their frontmatter properties. A Base isn't a spreadsheet you fill in; it's a lens you point at notes you already have. Open the **⊞ Bases** tab to use them.
+
+| Capability | Detail |
+|---|---|
+| **Reads `.base` files** | Any `.base` in your vault (folder or ZIP) is parsed and rendered. Previously ignored alongside `.md`; now first-class. |
+| **Table & card views** | Each view in the file renders as a sortable table or a card gallery (with cover images). Switch views from the panel header. |
+| **Filters** | `and` / `or` / `not` trees and expression strings (`status != "done"`, `source_count >= 2`, `tags.contains("ai")`) evaluated per note. |
+| **Formulas** | Computed columns — `source_count * 10`, `"$" + price.toFixed(2)` — with arithmetic, string ops, and built-in functions (`if`, `min`, `max`, `date`, `now`, …). |
+| **Sort / group / limit** | Honoured from the file; click any column header to re-sort live. |
+| **Display names** | The `properties` block's `displayName` becomes the column header. |
+
+**Works on any vault.** Even with zero `.base` files, the auto-generated **✦ All Notes** dashboard gives you a filterable, sortable properties table built from your vault's most common frontmatter fields.
+
+**Generate starter Bases.** Because VaultMind writes consistent properties (`page_type`, `source_count`, `last_updated`, …), it can emit ready-made Bases to your vault root in one click:
+
+| Generator | What it shows |
+|---|---|
+| **sources.base** | Every source note ingested by VaultMind, newest first |
+| **entities.base** | Entity & concept pages ranked by how many sources mention them |
+| **stale.base** | Entity pages last updated before 2026 — candidates for re-synthesis |
+
+In folder mode these are written to disk and open back up in Obsidian itself; in ZIP mode they live for the session.
 
 ---
 
@@ -217,8 +246,8 @@ The entire app is a single HTML file.
 | | VaultMind | Typical news article page |
 |---|---|---|
 | Files | 1 | 100s (HTML + JS bundles + CSS + fonts + images + trackers) |
-| Raw size | 225 KB | 3–8 MB |
-| Transferred (gzipped) | **~58 KB** | 3–8 MB |
+| Raw size | 270 KB | 3–8 MB |
+| Transferred (gzipped) | **~69 KB** | 3–8 MB |
 | Trackers / ads | 0 | Many |
 | ML inference | ✅ In-browser | ✗ |
 
