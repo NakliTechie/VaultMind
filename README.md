@@ -18,8 +18,11 @@ Drop your Obsidian vault (as a folder or a ZIP) and get:
 - **Note editor** — edit any note in place with a markdown toolbar. Autosave to disk, unsaved-draft recovery, Ctrl+B/I/S shortcuts.
 - **Semantic audit** — orphan detection, broken link report, frontmatter lint, top hubs, tag cloud.
 - **Web search** — optional live augmentation via Tavily, Brave, or SearXNG.
+- **Community plugins (experimental)** — when you open a vault as a folder, VaultMind reads `.obsidian/plugins/` and runs your enabled Obsidian community plugins in-page, against a browser implementation of the Obsidian API. Mobile-compatible plugins (`isDesktopOnly: false`) are the target; plugins that reach for node/electron are flagged and not auto-run. See the 🧩 tab for status and a live compatibility matrix, and press Ctrl/Cmd-P for the command palette.
 
 Everything is a single HTML file. Open it, load a vault, start exploring.
+
+> **Plugins run with full page access.** Community-plugin support executes third-party `main.js` directly in the page (no sandbox yet). Only enable plugins you trust, on a vault you own. See [docs/obsidian-plugin-compatibility-plan.md](docs/obsidian-plugin-compatibility-plan.md).
 
 ## How to run
 

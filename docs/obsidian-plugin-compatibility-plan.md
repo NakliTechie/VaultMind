@@ -1,8 +1,63 @@
 # Obsidian Plugin Compatibility — Plan
 
-> Status: **planning / not started**. Authored in a web session; to be resumed in a
-> desktop session. This is the roadmap for making VaultMind run existing Obsidian
-> community plugins as drop-ins.
+> Status: **runtime core shipped (in-page)**. The plugin loader + `obsidian` API
+> shim now run real community plugins directly inside the single-file app. This
+> is the roadmap for making VaultMind run existing Obsidian community plugins as
+> drop-ins.
+
+## Decision update (2026-06-27, desktop session) — what we actually did
+
+The original "locked decisions" below assumed dropping the single-file ethos and
+sequencing Vite → CM6 → runtime. We re-litigated and **inverted the sequence**:
+
+- **Single file is KEPT, not dropped.** Size is a non-issue (Bahi is 900 KB, the
+  Figma app is 1 GB). Plugins are *runtime input* read from the user's vault — they
+  are never part of the build artifact — so plugin support needs no build step at
+  all. The "one page / one URL" constraint is fully satisfied. If/when CM6 lands,
+  it can come via the existing CDN-ESM pattern (like transformers.js) or a Vite
+  `singlefile` build that still emits one `index.html`.
+- **Runtime-first, not Vite-first.** The plugin runtime is the cheapest thing to
+  prove and the most informative (the gap-tracker tells us what to build next), so
+  it went first — before any build-system or editor work.
+- **Security: in-page execution, accepted as the user's own risk** (their vault,
+  their plugins). No sandbox; `new Function` runs `main.js` with full page access.
+  Red plugins (static node/electron use) are *blocked by default* with a
+  "run anyway" affordance.
+
+### What shipped (in `index.html`, verified end-to-end)
+
+- **Loader** — reads `.obsidian/plugins/*/{manifest.json,main.js,styles.css}` +
+  `community-plugins.json` (enabled set) via the existing FSA dir handle; also
+  `loadFromText(manifest, code, css)` for no-picker / nakliOS / headless use.
+- **`obsidian` shim** — `Plugin`, `Component`, `Events`, `Notice`, `TFile`/
+  `TFolder`/`TAbstractFile`, `Vault` (read + create/modify/delete/process,
+  events), `MetadataCache` (`getFileCache`, `resolvedLinks`), `Workspace`
+  (active file + stubs), UI (`Modal`, `Setting`, `Menu`, `PluginSettingTab`),
+  extension-target stub classes (`ItemView`/`View`/`MarkdownView`/`SuggestModal`/
+  `FuzzySuggestModal`/…), helpers (`requestUrl`, `request`, `debounce`,
+  `normalizePath`, `parseYaml`/`stringifyYaml`, `moment` (minimal), `setIcon`,
+  `Platform`, `MarkdownRenderer`, `getAllTags`), and DOM-prototype augmentations
+  (`createEl`/`createDiv`/`setText`/`empty`/`addClass`/…).
+- **`require` + classifier** — `require('obsidian')` → shim; node builtins →
+  guarded Proxy stubs that trip the classifier; green/yellow/red levels.
+- **Gap-tracker Proxy** — records every missing-member access → live compatibility
+  matrix in the 🧩 tab; auto-downgrades green→yellow on first gap.
+- **UI** — 🧩 Plugins sidebar tab (status dots, per-plugin reason/errors,
+  "run anyway", compat matrix), a bottom **status bar** (`addStatusBarItem`),
+  **Notice** toasts, and a **command palette** (Ctrl/Cmd-P) driving `addCommand`.
+
+### Verified
+
+Real esbuild-style CJS plugins load through the shim: status-bar text reads live
+vault data, commands fire Notices, `extends obsidian.ItemView` works, a node-using
+plugin is correctly blocked (red), and the gap-tracker accumulates missing members.
+No console errors. **Not yet done:** ZIP-mode plugin loading (FSA folder only),
+CM6 editor (so editor-extension plugins are still gaps), workspace leaves/views
+(stubbed), and the sandbox (deferred).
+
+---
+
+## Original plan (below) — kept for context; sequence superseded by the above
 
 ## Goal
 

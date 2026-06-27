@@ -807,6 +807,70 @@ body {
   padding: 12px 18px; border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; flex-shrink: 0;
 }
+/* ── Obsidian plugin runtime ──────────────────────────────────────────────── */
+#vm-statusbar {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 22px; z-index: 90;
+  display: none; align-items: center; gap: 14px;
+  padding: 0 12px; font-size: 0.72rem; color: var(--muted);
+  background: var(--surface); border-top: 1px solid var(--border);
+}
+#vm-statusbar.visible { display: flex; }
+#vm-statusbar .vm-status-item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+#vm-statusbar .vm-status-item a { color: var(--accent-hi); cursor: pointer; }
+
+#vm-toasts {
+  position: fixed; top: 16px; right: 16px; z-index: 300;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.vm-toast {
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: 6px; padding: 8px 12px; font-size: 0.8rem; max-width: 320px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.4); pointer-events: auto;
+  animation: vm-toast-in 0.18s ease-out;
+}
+@keyframes vm-toast-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+
+#vm-cmdpal-overlay {
+  position: fixed; inset: 0; z-index: 320; display: none;
+  background: rgba(0,0,0,0.45); align-items: flex-start; justify-content: center;
+}
+#vm-cmdpal-overlay.open { display: flex; }
+#vm-cmdpal {
+  margin-top: 12vh; width: min(560px, 90vw);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+}
+#vm-cmdpal-input {
+  width: 100%; box-sizing: border-box; padding: 14px 16px; border: none;
+  background: transparent; color: var(--text); font-size: 1rem; outline: none;
+  border-bottom: 1px solid var(--border);
+}
+#vm-cmdpal-list { max-height: 50vh; overflow-y: auto; }
+.vm-cmd-item {
+  padding: 9px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px;
+  font-size: 0.85rem;
+}
+.vm-cmd-item.sel, .vm-cmd-item:hover { background: var(--surface2); }
+.vm-cmd-item .vm-cmd-plug { color: var(--muted); font-size: 0.72rem; margin-left: auto; }
+.vm-cmd-empty { padding: 16px; color: var(--muted); font-size: 0.82rem; }
+
+.vm-plug-item {
+  border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+  margin-bottom: 6px; background: var(--surface2);
+}
+.vm-plug-head { display: flex; align-items: center; gap: 6px; }
+.vm-plug-name { font-weight: 600; font-size: 0.82rem; }
+.vm-plug-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.vm-plug-dot.green  { background: var(--node-hub); }
+.vm-plug-dot.yellow { background: var(--tag-col); }
+.vm-plug-dot.red    { background: var(--node-orph); }
+.vm-plug-meta { font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+.vm-plug-err  { font-size: 0.7rem; color: var(--node-orph); margin-top: 3px; word-break: break-word; }
+.vm-plug-toggle { margin-left: auto; font-size: 0.7rem; cursor: pointer; color: var(--accent-hi); }
+.vm-plug-empty { color: var(--muted); font-size: 0.8rem; padding: 8px 2px; }
+.vm-gap-row { display: flex; justify-content: space-between; padding: 2px 4px; border-bottom: 1px solid var(--border); }
+.vm-gap-row .vm-gap-n { color: var(--tag-col); }
 </style>
 </head>
 <body>
@@ -859,6 +923,7 @@ body {
         <button class="tab-btn" data-tab="bases">⊞ Bases</button>
         <button class="tab-btn" data-tab="audit">Audit</button>
         <button class="tab-btn" data-tab="ingest">📥</button>
+        <button class="tab-btn" data-tab="plugins">🧩</button>
       </div>
       <div class="tab-panel active" id="tab-notes">
         <input type="text" class="search-box" id="note-search" placeholder="Search notes…" autocomplete="off">
@@ -902,6 +967,17 @@ body {
         <div class="ingest-section-label" style="margin-top:6px">Queue</div>
         <div id="ingest-queue" style="overflow-y:auto;flex:1"></div>
         <button class="btn btn-primary btn-sm" id="ingest-process-all-btn" style="margin-top:6px;flex-shrink:0">Process All</button>
+      </div>
+      <!-- ── Plugins tab ────────────────────────────── -->
+      <div class="tab-panel" id="tab-plugins">
+        <div class="ingest-section-label" style="display:flex;align-items:center;gap:6px">
+          Community plugins
+          <span id="vm-plugins-count" style="color:var(--muted);font-weight:400;font-size:0.72rem"></span>
+          <button class="btn btn-secondary btn-sm" id="vm-plugins-reload" style="margin-left:auto;padding:1px 8px" title="Re-scan .obsidian/plugins">↻</button>
+        </div>
+        <div id="vm-plugins-list" style="overflow-y:auto;flex:1"><div class="vm-plug-empty">No vault loaded.</div></div>
+        <div class="ingest-section-label" style="margin-top:6px">Compatibility (missing API)</div>
+        <div id="vm-plugins-gaps" style="max-height:200px;overflow-y:auto;font-size:0.72rem"></div>
       </div>
     </aside>
 
@@ -3797,6 +3873,7 @@ async function loadFiles(files) {
     saveIndexMd();  // write/update index.md if folder access exists
     startEmbedWorker(); // begin indexing vault for RAG
     initIngestSystem(); // set up _inbox/ watcher and ingest tab
+    if (window.VMPlugins) VMPlugins.load(); // scan & run .obsidian/plugins (folder mode)
     tryAutoLoadModel(); // re-load last used model if cached
     // Show app first so canvas has real dimensions, then resize + draw
     document.getElementById('loading').classList.remove('visible');
@@ -6133,8 +6210,657 @@ document.querySelectorAll('.help-tab').forEach(tab => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.getElementById('help-modal').classList.remove('open');
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// Obsidian plugin runtime — in-page loader + `obsidian` API shim
+// ────────────────────────────────────────────────────────────────────────────
+// Reads .obsidian/plugins/*, executes each plugin's CommonJS main.js through a
+// require() we control, and adapts the Obsidian API onto VaultMind's internals.
+// Target surface: Obsidian's *mobile* plugin API (isDesktopOnly:false). A
+// gap-tracker Proxy records every missing-member access → live compat matrix.
+// Security model: in-page execution; the user's own vault, the user's own
+// plugins. No sandbox (deferred). main.js runs with full page access.
+// ════════════════════════════════════════════════════════════════════════════
+const VMPlugins = (() => {
+  const loaded   = [];          // { id, name, manifest, instance, status, reason, error, rec, _files }
+  const commands = new Map();   // commandId → { id, name, callback, checkCallback, pluginId, pluginName }
+  const gaps     = new Map();   // "Member" → access count  (gap-tracker telemetry)
+  let _current = null;          // entry currently loading (for per-plugin gap attribution)
+  let cmdSeq = 0;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function recordGap(member) {
+    gaps.set(member, (gaps.get(member) || 0) + 1);
+    if (_current && _current.rec) _current.rec.missing.set(member, (_current.rec.missing.get(member) || 0) + 1);
+  }
+
+  // ── Notice (toast) ──────────────────────────────────────────────────────────
+  class Notice {
+    constructor(message, timeout = 4000) {
+      const host = document.getElementById('vm-toasts');
+      const el = document.createElement('div');
+      el.className = 'vm-toast';
+      el.textContent = message == null ? '' : String(message);
+      host.appendChild(el);
+      this.noticeEl = el;
+      if (timeout > 0) setTimeout(() => this.hide(), timeout);
+    }
+    setMessage(m) { this.noticeEl.textContent = String(m); return this; }
+    hide() { if (this.noticeEl && this.noticeEl.parentNode) this.noticeEl.remove(); }
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────────
+  class Events {
+    constructor() { this._ev = new Map(); }
+    on(name, cb, ctx) {
+      const ref = { name, cb, ctx };
+      ref._off = () => this.offref(ref);
+      if (!this._ev.has(name)) this._ev.set(name, new Set());
+      this._ev.get(name).add(ref);
+      return ref;
+    }
+    off(name, cb) { const s = this._ev.get(name); if (s) for (const r of [...s]) if (r.cb === cb) s.delete(r); }
+    offref(ref) { const s = ref && this._ev.get(ref.name); if (s) s.delete(ref); }
+    trigger(name, ...args) {
+      const s = this._ev.get(name); if (!s) return;
+      for (const r of [...s]) { try { r.cb.apply(r.ctx, args); } catch (e) { console.error('[plugin event ' + name + ']', e); } }
+    }
+  }
+
+  // ── Component (base for Plugin) ─────────────────────────────────────────────
+  class Component {
+    constructor() { this._registered = []; this._children = []; }
+    load() { this.onload && this.onload(); }
+    onload() {}
+    unload() { for (const c of this._children) { try { c.unload && c.unload(); } catch (e) {} } for (const fn of this._registered) { try { fn(); } catch (e) {} } this._registered = []; this.onunload && this.onunload(); }
+    onunload() {}
+    addChild(c) { this._children.push(c); c.load && c.load(); return c; }
+    removeChild(c) { const i = this._children.indexOf(c); if (i >= 0) this._children.splice(i, 1); c.unload && c.unload(); return c; }
+    register(cb) { this._registered.push(cb); }
+    registerEvent(ref) { if (ref && ref._off) this._registered.push(ref._off); }
+    registerDomEvent(el, type, cb) { el.addEventListener(type, cb); this._registered.push(() => el.removeEventListener(type, cb)); }
+    registerInterval(id) { this._registered.push(() => clearInterval(id)); return id; }
+  }
+
+  // ── File model ──────────────────────────────────────────────────────────────
+  class TAbstractFile { constructor(path) { this.path = path; this.name = path.split('/').pop(); } }
+  class TFile extends TAbstractFile {
+    constructor(note) {
+      super(note.path);
+      this._note = note;
+      this.basename = note.filename;
+      this.extension = (note.path.split('.').pop() || 'md').toLowerCase();
+      this.stat = { ctime: 0, mtime: 0, size: (note.body || '').length };
+    }
+  }
+  class TFolder extends TAbstractFile { constructor(path) { super(path || '/'); this.children = []; } isRoot() { return this.path === '/' || this.path === ''; } }
+
+  const _tfileCache = new WeakMap();
+  function fileFor(note) { let f = _tfileCache.get(note); if (!f) { f = new TFile(note); _tfileCache.set(note, f); } return f; }
+  function reconstruct(note) {
+    const hasFm = note.fm && Object.keys(note.fm).length > 0;
+    return (hasFm ? dumpFrontmatter(note.fm) : '') + (note.body || '');
+  }
+
+  // ── Vault adapter ───────────────────────────────────────────────────────────
+  async function diskWrite(path, data) {
+    if (!vault.dirHandle) return;
+    const fh = await getFileHandleFromPath(vault.dirHandle, path);
+    const w = await fh.createWritable(); await w.write(data); await w.close();
+  }
+  class Vault extends Events {
+    getName() { return vault.vaultName; }
+    getAbstractFileByPath(path) { const n = vault.byPath.get(path) || vault.byPath.get(path.replace(/^\//, '')); return n ? fileFor(n) : null; }
+    getFileByPath(path) { return this.getAbstractFileByPath(path); }
+    getFiles() { return Array.from(vault.byPath.values()).map(fileFor); }
+    getMarkdownFiles() { return this.getFiles().filter(f => f.extension === 'md'); }
+    getAllLoadedFiles() { return this.getFiles(); }
+    getRoot() { return new TFolder('/'); }
+    async read(file) { return reconstruct(file._note); }
+    async cachedRead(file) { return reconstruct(file._note); }
+    async modify(file, data) { await writeNote(file._note, data); }
+    async create(path, data) { return await createNote(path, data); }
+    async createFolder() { recordGap('Vault.createFolder'); }
+    async delete(file) { await deleteNote(file._note); }
+    async trash(file) { await deleteNote(file._note); }
+    async rename(file, newPath) { recordGap('Vault.rename'); }
+    async copy(file, newPath) { return await createNote(newPath, reconstruct(file._note)); }
+    async append(file, data) { await writeNote(file._note, reconstruct(file._note) + data); }
+    async process(file, fn) { const cur = reconstruct(file._note); const next = fn(cur); await writeNote(file._note, next); return next; }
+    get adapter() { return vaultAdapter; }
+    get configDir() { return '.obsidian'; }
+    getConfig() { return undefined; }
+  }
+  async function writeNote(note, data) {
+    const parsed = parseFrontmatter(data);
+    note.fm = parsed.fm; note.body = parsed.body;
+    note.wikilinks = extractWikilinks(note.body); note.tags = extractTags(note.body, note.fm);
+    await diskWrite(note.path, data);
+    if (typeof markDirtyInList === 'function') try { markDirtyInList(note); } catch (e) {}
+    vaultObj.trigger('modify', fileFor(note));
+  }
+  async function createNote(path, data) {
+    if (!/\.\w+$/.test(path)) path += '.md';
+    const note = parseNote(path, data || '');
+    vault.byPath.set(path, note);
+    vault.byName.set(note.filename.toLowerCase(), note);
+    await diskWrite(path, data || '');
+    const f = fileFor(note); vaultObj.trigger('create', f); return f;
+  }
+  async function deleteNote(note) {
+    vault.byPath.delete(note.path); vault.byName.delete(note.filename.toLowerCase());
+    if (vault.dirHandle) {
+      try {
+        const parts = note.path.replace(/^\//, '').split('/');
+        let h = vault.dirHandle;
+        for (let i = 0; i < parts.length - 1; i++) h = await h.getDirectoryHandle(parts[i]);
+        await h.removeEntry(parts[parts.length - 1]);
+      } catch (e) { console.error('[plugin delete]', e); }
+    }
+    vaultObj.trigger('delete', fileFor(note));
+  }
+  const vaultAdapter = {
+    async read(path) {
+      const n = vault.byPath.get(path); if (n) return reconstruct(n);
+      if (vault.dirHandle) { try { const fh = await getFileHandleFromPath(vault.dirHandle, path); return await (await fh.getFile()).text(); } catch (e) {} }
+      throw new Error('not found: ' + path);
+    },
+    async write(path, data) { await diskWrite(path, data); },
+    async exists(path) { if (vault.byPath.has(path)) return true; if (vault.dirHandle) { try { await getFileHandleFromPath(vault.dirHandle, path); return true; } catch (e) {} } return false; },
+    async list() { recordGap('adapter.list'); return { files: [], folders: [] }; },
+    async mkdir() {},
+    async remove(path) { const n = vault.byPath.get(path); if (n) await deleteNote(n); },
+    getName() { return vault.vaultName; },
+    getBasePath() { return vault.vaultName; },
+  };
+
+  // ── MetadataCache ───────────────────────────────────────────────────────────
+  function cacheFor(note) {
+    const cache = {};
+    if (note.fm && Object.keys(note.fm).length) cache.frontmatter = note.fm;
+    cache.tags = Array.from(note.tags || []).map(t => ({ tag: '#' + t, position: { start: {}, end: {} } }));
+    cache.links = Array.from(note.wikilinks || []).map(l => ({ link: l, original: '[[' + l + ']]', displayText: l, position: { start: {}, end: {} } }));
+    cache.headings = [];
+    return cache;
+  }
+  function buildResolvedLinks() {
+    const out = {};
+    for (const note of vault.byPath.values()) {
+      const m = {};
+      for (const l of (note.wikilinks || [])) { const t = vault.byName.get(String(l).toLowerCase()); if (t) m[t.path] = (m[t.path] || 0) + 1; }
+      out[note.path] = m;
+    }
+    return out;
+  }
+  class MetadataCache extends Events {
+    getFileCache(file) { return file && file._note ? cacheFor(file._note) : null; }
+    getCache(path) { const n = vault.byPath.get(path); return n ? cacheFor(n) : null; }
+    getFirstLinkpathDest(linkpath) { const n = vault.byName.get(String(linkpath).split(/[#|]/)[0].toLowerCase()); return n ? fileFor(n) : null; }
+    fileToLinktext(file) { return file._note ? file._note.filename : file.basename; }
+    get resolvedLinks() { return buildResolvedLinks(); }
+    get unresolvedLinks() { return {}; }
+  }
+
+  // ── Workspace (mostly stubs; active file is real) ───────────────────────────
+  class Workspace extends Events {
+    getActiveFile() { return (typeof view !== 'undefined' && view.selected && view.selected.note) ? fileFor(view.selected.note) : null; }
+    getActiveViewOfType() { return null; }
+    getLeavesOfType() { return []; }
+    getLeftLeaf() { recordGap('Workspace.getLeftLeaf'); return null; }
+    getRightLeaf() { recordGap('Workspace.getRightLeaf'); return null; }
+    getLeaf() { recordGap('Workspace.getLeaf'); return null; }
+    onLayoutReady(cb) { cb(); }
+    revealLeaf() { recordGap('Workspace.revealLeaf'); }
+    iterateAllLeaves() {}
+  }
+
+  // ── UI base classes plugins extend ──────────────────────────────────────────
+  function injectModalCss() {
+    if (document.getElementById('vm-plugin-modal-css')) return;
+    const s = document.createElement('style'); s.id = 'vm-plugin-modal-css';
+    s.textContent = '.vm-modal-overlay{position:fixed;inset:0;z-index:310;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center}'
+      + '.vm-modal-box{margin-top:12vh;width:min(560px,90vw);max-height:70vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:18px;box-shadow:0 12px 48px rgba(0,0,0,.5)}'
+      + '.vm-modal-title{font-weight:700;font-size:1rem;margin-bottom:10px}'
+      + '.vm-setting{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}'
+      + '.vm-setting .vm-setting-name{font-weight:600;font-size:.85rem}.vm-setting .vm-setting-desc{font-size:.74rem;color:var(--muted)}'
+      + '.vm-setting input,.vm-setting select,.vm-setting textarea,.vm-modal-box button{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:4px 8px}'
+      + '.vm-setting>div:last-child{margin-left:auto}';
+    document.head.appendChild(s);
+  }
+  function openSimpleModal(modal) {
+    injectModalCss();
+    const ov = document.createElement('div'); ov.className = 'vm-modal-overlay';
+    const box = document.createElement('div'); box.className = 'vm-modal-box';
+    if (modal.titleEl && modal.titleEl.textContent) { modal.titleEl.className = 'vm-modal-title'; box.appendChild(modal.titleEl); }
+    box.appendChild(modal.contentEl);
+    ov.appendChild(box);
+    ov.addEventListener('click', e => { if (e.target === ov) modal.close(); });
+    document.body.appendChild(ov); modal._ov = ov;
+  }
+  function closeSimpleModal(modal) { if (modal._ov) modal._ov.remove(); modal._ov = null; }
+  class Modal {
+    constructor(app) { this.app = app; this.containerEl = document.createElement('div'); this.modalEl = document.createElement('div'); this.contentEl = document.createElement('div'); this.titleEl = document.createElement('div'); this.scope = { register() {}, unregister() {} }; }
+    open() { openSimpleModal(this); this.onOpen && this.onOpen(); }
+    close() { closeSimpleModal(this); this.onClose && this.onClose(); }
+    onOpen() {} onClose() {}
+    setTitle(t) { this.titleEl.textContent = t; return this; }
+    setContent(c) { if (typeof c === 'string') this.contentEl.textContent = c; else if (c) this.contentEl.appendChild(c); return this; }
+  }
+  class Setting {
+    constructor(containerEl) {
+      this.settingEl = containerEl.createDiv({ cls: 'vm-setting' });
+      this.infoEl = this.settingEl.createDiv();
+      this.nameEl = this.infoEl.createDiv({ cls: 'vm-setting-name' });
+      this.descEl = this.infoEl.createDiv({ cls: 'vm-setting-desc' });
+      this.controlEl = this.settingEl.createDiv();
+    }
+    setName(n) { this.nameEl.textContent = n; return this; }
+    setDesc(d) { this.descEl.textContent = d; return this; }
+    setHeading() { this.settingEl.classList.add('vm-setting-heading'); return this; }
+    addText(cb) { const i = this.controlEl.createEl('input', { type: 'text' }); const t = { inputEl: i, setValue(v) { i.value = v == null ? '' : v; return t; }, setPlaceholder(p) { i.placeholder = p; return t; }, onChange(fn) { i.addEventListener('input', () => fn(i.value)); return t; }, getValue() { return i.value; } }; cb && cb(t); return this; }
+    addTextArea(cb) { const i = this.controlEl.createEl('textarea'); const t = { inputEl: i, setValue(v) { i.value = v == null ? '' : v; return t; }, setPlaceholder(p) { i.placeholder = p; return t; }, onChange(fn) { i.addEventListener('input', () => fn(i.value)); return t; }, getValue() { return i.value; } }; cb && cb(t); return this; }
+    addToggle(cb) { const i = this.controlEl.createEl('input', { type: 'checkbox' }); const t = { toggleEl: i, setValue(v) { i.checked = !!v; return t; }, onChange(fn) { i.addEventListener('change', () => fn(i.checked)); return t; }, getValue() { return i.checked; } }; cb && cb(t); return this; }
+    addButton(cb) { const b = this.controlEl.createEl('button'); const t = { buttonEl: b, setButtonText(x) { b.textContent = x; return t; }, setCta() { b.classList.add('btn-primary'); return t; }, setWarning() { return t; }, setIcon() { return t; }, onClick(fn) { b.addEventListener('click', fn); return t; } }; cb && cb(t); return this; }
+    addDropdown(cb) { const s = this.controlEl.createEl('select'); const t = { selectEl: s, addOption(v, l) { const o = document.createElement('option'); o.value = v; o.text = l; s.appendChild(o); return t; }, addOptions(o) { for (const k in o) t.addOption(k, o[k]); return t; }, setValue(v) { s.value = v; return t; }, onChange(fn) { s.addEventListener('change', () => fn(s.value)); return t; }, getValue() { return s.value; } }; cb && cb(t); return this; }
+    addSlider(cb) { const i = this.controlEl.createEl('input', { type: 'range' }); const t = { sliderEl: i, setLimits(min, max, step) { i.min = min; i.max = max; i.step = step; return t; }, setValue(v) { i.value = v; return t; }, setDynamicTooltip() { return t; }, onChange(fn) { i.addEventListener('input', () => fn(+i.value)); return t; }, getValue() { return +i.value; } }; cb && cb(t); return this; }
+    addExtraButton(cb) { return this.addButton(cb); }
+    then(cb) { cb && cb(this); return this; }
+  }
+  class PluginSettingTab { constructor(app, plugin) { this.app = app; this.plugin = plugin; this.containerEl = document.createElement('div'); } display() {} hide() {} }
+  class MenuItem { setTitle(t) { this.title = t; return this; } setIcon() { return this; } onClick(cb) { this.cb = cb; return this; } setDisabled() { return this; } setChecked() { return this; } setSection() { return this; } }
+  class Menu { constructor() { this.items = []; } addItem(cb) { const it = new MenuItem(); cb(it); this.items.push(it); return this; } addSeparator() { return this; } showAtMouseEvent() { recordGap('Menu.show'); } showAtPosition() { recordGap('Menu.show'); } setNoIcon() { return this; } }
+  class ItemView extends Component {
+    constructor(leaf) { super(); this.leaf = leaf; this.app = appObj; this.containerEl = document.createElement('div'); this.contentEl = this.containerEl; this.icon = ''; }
+    getViewType() { return ''; } getDisplayText() { return ''; } getIcon() { return this.icon; }
+    onOpen() { return Promise.resolve(); } onClose() { return Promise.resolve(); }
+    addAction() { recordGap('ItemView.addAction'); return document.createElement('div'); }
+  }
+  class View extends ItemView {}
+  class FileView extends ItemView {}
+  class MarkdownView extends ItemView { getMode() { return 'preview'; } }
+  class SuggestModal { constructor(app) { this.app = app; this.inputEl = document.createElement('input'); } open() { recordGap('SuggestModal.open'); } close() {} setPlaceholder(p) { this.inputEl.placeholder = p; return this; } getSuggestions() { return []; } }
+  class FuzzySuggestModal extends SuggestModal { getItems() { return []; } getItemText() { return ''; } }
+  class EditorSuggest { constructor(app) { this.app = app; } open() {} close() {} }
+  class AbstractInputSuggest { constructor(app, el) { this.app = app; this.inputEl = el; } open() {} close() {} }
+
+  // ── Plugin base ─────────────────────────────────────────────────────────────
+  class Plugin extends Component {
+    constructor(app, manifest) { super(); this.app = app; this.manifest = manifest || {}; this._data = null; }
+    addCommand(cmd) {
+      const id = (this.manifest.id || 'plugin') + ':' + (cmd.id || ('cmd' + (cmdSeq++)));
+      const callback = cmd.callback || (cmd.editorCallback ? () => cmd.editorCallback(getEditorStub(), null) : null);
+      commands.set(id, { id, name: cmd.name || cmd.id, callback, checkCallback: cmd.checkCallback || cmd.editorCheckCallback, pluginId: this.manifest.id, pluginName: this.manifest.name || this.manifest.id });
+      this.register(() => commands.delete(id));
+      return cmd;
+    }
+    addRibbonIcon(icon, title, cb) { recordGap('Plugin.addRibbonIcon'); const el = document.createElement('span'); if (cb) el.addEventListener('click', cb); el.setAttribute('aria-label', title || ''); return el; }
+    addStatusBarItem() {
+      const el = document.createElement('div'); el.className = 'vm-status-item';
+      document.getElementById('vm-statusbar').appendChild(el);
+      this.register(() => { el.remove(); updateStatusbarVisibility(); });
+      updateStatusbarVisibility();
+      return el;
+    }
+    addSettingTab(tab) { recordGap('Plugin.addSettingTab'); this._settingTab = tab; }
+    registerView() { recordGap('Plugin.registerView'); }
+    registerExtensions() { recordGap('Plugin.registerExtensions'); }
+    registerEditorExtension() { recordGap('Plugin.registerEditorExtension'); }
+    registerEditorSuggest() { recordGap('Plugin.registerEditorSuggest'); }
+    registerMarkdownPostProcessor() { recordGap('Plugin.registerMarkdownPostProcessor'); }
+    registerMarkdownCodeBlockProcessor() { recordGap('Plugin.registerMarkdownCodeBlockProcessor'); }
+    registerHoverLinkSource() { recordGap('Plugin.registerHoverLinkSource'); }
+    registerObsidianProtocolHandler() { recordGap('Plugin.registerObsidianProtocolHandler'); }
+    addChild(c) { return super.addChild(c); }
+    async loadData() {
+      if (this._data !== null) return this._data;
+      try { const raw = await readPluginData(this.manifest.id); this._data = raw ? JSON.parse(raw) : null; } catch (e) { this._data = null; }
+      return this._data;
+    }
+    async saveData(data) { this._data = data; await writePluginData(this.manifest.id, JSON.stringify(data, null, 2)); }
+  }
+
+  function getEditorStub() {
+    recordGap('Editor');
+    return { getValue: () => '', setValue: () => {}, getSelection: () => '', replaceSelection: () => {}, getCursor: () => ({ line: 0, ch: 0 }), setCursor: () => {}, getLine: () => '', lineCount: () => 0, lastLine: () => 0, replaceRange: () => {}, getRange: () => '', focus: () => {} };
+  }
+
+  // ── Helper exports ──────────────────────────────────────────────────────────
+  function normalizePath(p) { return String(p).replace(/\\/g, '/').replace(/\/{2,}/g, '/').replace(/^\.\//, '').replace(/^\/+|\/+$/g, '') || '/'; }
+  function stringifyYaml(obj) { const out = []; for (const [k, v] of Object.entries(obj || {})) out.push(k + ': ' + (v != null && typeof v === 'object' ? JSON.stringify(v) : String(v))); return out.join('\n') + '\n'; }
+  function debounce(fn, wait, immediate) { let t; const d = function (...a) { const ctx = this; clearTimeout(t); if (immediate && !t) fn.apply(ctx, a); t = setTimeout(() => { t = null; if (!immediate) fn.apply(ctx, a); }, wait); }; d.cancel = () => clearTimeout(t); return d; }
+  async function requestUrl(opts) {
+    const o = typeof opts === 'string' ? { url: opts } : opts;
+    const res = await fetch(o.url, { method: o.method || 'GET', headers: o.headers, body: o.body });
+    const buf = await res.arrayBuffer(); const text = new TextDecoder().decode(buf);
+    let json; try { json = JSON.parse(text); } catch (e) {}
+    return { status: res.status, text, json, arrayBuffer: buf, headers: Object.fromEntries(res.headers.entries()) };
+  }
+  async function request(opts) { return (await requestUrl(opts)).text; }
+  const ICON_GLYPHS = { 'dice': '🎲', 'calendar': '📅', 'search': '🔍', 'file': '📄', 'folder': '📁', 'settings': '⚙', 'star': '★', 'clock': '🕓', 'pencil': '✎', 'trash': '🗑', 'check': '✓', 'plus': '+', 'cross': '✕', 'menu': '☰', 'tag': '#' };
+  function setIcon(el, name) { if (el) { el.setAttribute('data-icon', name); if (!el.textContent) el.textContent = ICON_GLYPHS[name] || '•'; } }
+  function addIcon() {}
+  function getAllTags(cache) { return cache && cache.tags ? cache.tags.map(t => t.tag) : []; }
+  function getLinkpath(link) { return String(link).replace(/[#|].*$/, ''); }
+  function htmlToMarkdown(html) { recordGap('htmlToMarkdown'); const d = document.createElement('div'); d.innerHTML = html; return d.textContent || ''; }
+  function moment(input) {
+    const d = input ? new Date(input) : new Date();
+    const pad = (n, l = 2) => String(n).padStart(l, '0');
+    const api = {
+      format(fmt) { if (!fmt) return d.toISOString(); return fmt.replace(/YYYY/g, d.getFullYear()).replace(/MM/g, pad(d.getMonth() + 1)).replace(/DD/g, pad(d.getDate())).replace(/HH/g, pad(d.getHours())).replace(/mm/g, pad(d.getMinutes())).replace(/ss/g, pad(d.getSeconds())); },
+      toDate() { return d; }, valueOf() { return d.valueOf(); }, unix() { return Math.floor(d.valueOf() / 1000); },
+      add() { return api; }, subtract() { return api; }, startOf() { return api; }, endOf() { return api; },
+      isValid() { return !isNaN(d.valueOf()); }, toISOString() { return d.toISOString(); }, isSame() { return false; }, isBefore() { return false; }, isAfter() { return false; },
+    };
+    return api;
+  }
+  const MarkdownRenderer = {
+    async render(app, md, el, sourcePath, component) { el.innerHTML = (typeof renderMd === 'function') ? renderMd(md) : esc(md); },
+    async renderMarkdown(md, el, sourcePath, component) { el.innerHTML = (typeof renderMd === 'function') ? renderMd(md) : esc(md); },
+  };
+  const Platform = { isDesktop: true, isMobile: false, isMobileApp: false, isDesktopApp: false, isPhone: false, isTablet: false, isMacOS: /Mac/.test(navigator.platform), isWin: /Win/.test(navigator.platform), isLinux: /Linux/.test(navigator.platform), isIosApp: false, isAndroidApp: false, isSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent) };
+  class FileSystemAdapter { getName() { return vault.vaultName; } getBasePath() { return vault.vaultName; } }
+
+  // ── Instances + App ─────────────────────────────────────────────────────────
+  const vaultObj = new Vault();
+  const metaObj = new MetadataCache();
+  const wsObj = new Workspace();
+  const appObj = {
+    vault: vaultObj, metadataCache: metaObj, workspace: wsObj,
+    fileManager: {
+      async processFrontMatter(file, fn) { const n = file._note; n.fm = n.fm || {}; fn(n.fm); await writeNote(n, reconstruct(n)); },
+      generateMarkdownLink(file) { return '[[' + (file._note ? file._note.filename : file.basename) + ']]'; },
+      getNewFileParent() { return new TFolder('/'); },
+    },
+    keymap: { pushScope() {}, popScope() {} },
+    scope: { register() {}, unregister() {} },
+    lastEvent: null,
+    loadLocalStorage(k) { try { return JSON.parse(localStorage.getItem('vm-plugin:' + k)); } catch (e) { return null; } },
+    saveLocalStorage(k, v) { localStorage.setItem('vm-plugin:' + k, JSON.stringify(v)); },
+  };
+
+  // ── The `obsidian` module shim + gap-tracker Proxy ──────────────────────────
+  const obsidianReal = {
+    Plugin, Component, Events, Notice, TFile, TFolder, TAbstractFile,
+    Vault, MetadataCache, Workspace, App: function App() {},
+    Modal, Setting, PluginSettingTab, Menu, MenuItem,
+    ItemView, View, FileView, MarkdownView, WorkspaceLeaf: function WorkspaceLeaf() {},
+    SuggestModal, FuzzySuggestModal, EditorSuggest, AbstractInputSuggest, PopoverSuggest: function PopoverSuggest() {},
+    MarkdownRenderer, MarkdownPreviewView: function MarkdownPreviewView() {},
+    normalizePath, parseYaml, stringifyYaml, requestUrl, request, debounce,
+    setIcon, addIcon, getIcon: () => null, Platform, moment, getAllTags, getLinkpath, htmlToMarkdown,
+    FileSystemAdapter, Keymap: function Keymap() {}, Scope: function Scope() {},
+    Notice_: Notice, // alias guard
+    parseLinktext: (s) => ({ path: getLinkpath(s), subpath: '' }),
+    resolveSubpath: () => null,
+    sanitizeHTMLToDom: (html) => { const t = document.createElement('template'); t.innerHTML = html; return t.content; },
+    requireApiVersion: () => true, apiVersion: '1.5.0',
+    TextComponent: function TextComponent() {}, ButtonComponent: function ButtonComponent() {},
+    ToggleComponent: function ToggleComponent() {}, DropdownComponent: function DropdownComponent() {},
+    SliderComponent: function SliderComponent() {}, TextAreaComponent: function TextAreaComponent() {},
+    ValueComponent: function ValueComponent() {}, BaseComponent: function BaseComponent() {},
+    ProgressBarComponent: function ProgressBarComponent() {}, SearchComponent: function SearchComponent() {},
+    ColorComponent: function ColorComponent() {}, ExtraButtonComponent: function ExtraButtonComponent() {},
+  };
+  function makeMissingStub(name) {
+    const stub = function ObsidianMissing() {};
+    return new Proxy(stub, {
+      construct() { return {}; },
+      apply() { return undefined; },
+      get(t, k) { if (k === 'prototype') return t.prototype; if (k === Symbol.hasInstance) return () => false; return undefined; },
+    });
+  }
+  const obsidianShim = new Proxy(obsidianReal, {
+    get(t, k) {
+      if (k in t) return t[k];
+      if (typeof k === 'symbol') return t[k];
+      recordGap(String(k));
+      return makeMissingStub(String(k));
+    },
+    has() { return true; },
+  });
+
+  // ── require() + classifier + loader ─────────────────────────────────────────
+  const NODE_BUILTINS = ['fs', 'fs/promises', 'path', 'child_process', 'electron', 'os', 'crypto', 'http', 'https', 'net', 'tls', 'stream', 'util', 'events', 'url', 'zlib', 'readline', 'worker_threads', 'assert', 'buffer', 'querystring'];
+  function nodeStub(name) {
+    const f = function () {};
+    return new Proxy(f, { get(t, k) { if (k === 'then') return undefined; if (typeof k === 'symbol') return t[k]; return nodeStub(name + '.' + String(k)); }, apply() { return undefined; }, construct() { return {}; } });
+  }
+  function makeRequire(rec) {
+    return function (name) {
+      if (name === 'obsidian') return obsidianShim;
+      if (NODE_BUILTINS.includes(name)) { rec.node.add(name); return nodeStub(name); }
+      rec.unknown.add(name); recordGap('require:' + name); return nodeStub(name);
+    };
+  }
+  function classify(manifest, code) {
+    if (/require\(\s*['"](fs|fs\/promises|child_process|electron|net|tls|http|https|os)['"]\s*\)/.test(code)) return { level: 'red', reason: 'uses node/electron API' };
+    if (manifest.isDesktopOnly) return { level: 'yellow', reason: 'marked desktop-only' };
+    return { level: 'green', reason: 'mobile-compatible API' };
+  }
+  function execPlugin(manifest, code, rec) {
+    const module = { exports: {} };
+    const fn = new Function('module', 'exports', 'require', code + '\n//# sourceURL=plugin:' + (manifest.id || 'unknown') + '/main.js');
+    fn(module, module.exports, makeRequire(rec));
+    const Cls = module.exports && (module.exports.default || module.exports);
+    if (typeof Cls !== 'function') throw new Error('main.js did not export a Plugin class');
+    return Cls;
+  }
+  function injectPluginCss(id, css) {
+    let s = document.getElementById('vm-plugcss-' + id);
+    if (!s) { s = document.createElement('style'); s.id = 'vm-plugcss-' + id; document.head.appendChild(s); }
+    s.textContent = css;
+  }
+  async function activate(entry) {
+    const { manifest, code, css } = entry._files;
+    entry.rec = entry.rec || { node: new Set(), unknown: new Set(), missing: new Map() };
+    _current = entry;
+    try {
+      if (css) injectPluginCss(manifest.id, css);
+      const Cls = execPlugin(manifest, code, entry.rec);
+      const inst = new Cls(appObj, manifest);
+      entry.instance = inst;
+      await (inst.onload ? inst.onload() : inst.load && inst.load());
+      entry.error = null;
+      if (entry.rec.missing.size && entry.status === 'green') { entry.status = 'yellow'; entry.reason = 'partial API (' + entry.rec.missing.size + ' missing)'; }
+    } catch (e) {
+      entry.instance = null;
+      entry.error = (e && e.message) || String(e);
+      if (entry.status === 'green') entry.status = 'yellow';
+      console.error('[plugin ' + manifest.id + ']', e);
+    } finally { _current = null; }
+  }
+  async function loadOne(files) {
+    const { manifest, code } = files;
+    const cls = classify(manifest, code);
+    const entry = { id: manifest.id, name: manifest.name || manifest.id, manifest, status: cls.level, reason: cls.reason, error: null, instance: null, rec: { node: new Set(), unknown: new Set(), missing: new Map() }, _files: files };
+    loaded.push(entry);
+    if (cls.level === 'red') { entry.error = 'Blocked — ' + cls.reason + '. Use “run anyway” to execute.'; return entry; }
+    await activate(entry);
+    return entry;
+  }
+  async function runRed(id) { const e = loaded.find(p => p.id === id); if (!e) return; e.status = 'yellow'; e.reason = 'run anyway (node API stubbed)'; await activate(e); renderPluginsPanel(); }
+
+  // ── Disk: plugin manifests + data.json ──────────────────────────────────────
+  async function readFileIn(dir, name) { const fh = await dir.getFileHandle(name); return await (await fh.getFile()).text(); }
+  async function pluginsDirHandle(create) {
+    const obs = await vault.dirHandle.getDirectoryHandle('.obsidian', { create });
+    return await obs.getDirectoryHandle('plugins', { create });
+  }
+  async function readPluginData(id) {
+    if (!vault.dirHandle) return null;
+    try { const pd = await pluginsDirHandle(false); const dir = await pd.getDirectoryHandle(id); return await readFileIn(dir, 'data.json'); } catch (e) { return null; }
+  }
+  async function writePluginData(id, str) {
+    if (!vault.dirHandle) return;
+    try { const pd = await pluginsDirHandle(true); const dir = await pd.getDirectoryHandle(id, { create: true }); const fh = await dir.getFileHandle('data.json', { create: true }); const w = await fh.createWritable(); await w.write(str); await w.close(); } catch (e) { console.error('[plugin data]', e); }
+  }
+
+  function reset() {
+    for (const p of loaded) { try { p.instance && p.instance.unload && p.instance.unload(); } catch (e) {} }
+    loaded.length = 0; commands.clear(); gaps.clear();
+    document.querySelectorAll('[id^="vm-plugcss-"]').forEach(s => s.remove());
+    const sb = document.getElementById('vm-statusbar'); if (sb) sb.innerHTML = '';
+    updateStatusbarVisibility();
+  }
+
+  // ── Loader entry point ──────────────────────────────────────────────────────
+  async function load() {
+    reset();
+    if (!vault.dirHandle) { renderPluginsPanel('Folder mode required — plugins load from .obsidian/plugins. Open a vault as a folder (not ZIP).'); return; }
+    let obs;
+    try { obs = await vault.dirHandle.getDirectoryHandle('.obsidian'); } catch (e) { renderPluginsPanel('No .obsidian folder in this vault.'); return; }
+    let enabled = null;
+    try { enabled = JSON.parse(await readFileIn(obs, 'community-plugins.json')); } catch (e) {}
+    let pluginsDir;
+    try { pluginsDir = await obs.getDirectoryHandle('plugins'); } catch (e) { renderPluginsPanel('No community plugins installed (.obsidian/plugins absent).'); return; }
+    const toLoad = [];
+    for await (const [name, entry] of pluginsDir) {
+      if (entry.kind !== 'directory') continue;
+      if (Array.isArray(enabled) && !enabled.includes(name)) continue; // only enabled run
+      try {
+        const manifest = JSON.parse(await readFileIn(entry, 'manifest.json'));
+        const code = await readFileIn(entry, 'main.js');
+        let css = null; try { css = await readFileIn(entry, 'styles.css'); } catch (e) {}
+        toLoad.push({ manifest, code, css });
+      } catch (e) { console.error('[plugin scan]', name, e); }
+    }
+    for (const f of toLoad) await loadOne(f);
+    renderPluginsPanel();
+    if (loaded.length) new Notice('Plugins: ' + loaded.filter(p => p.instance).length + '/' + loaded.length + ' active');
+  }
+
+  // ── UI: plugins panel + gap matrix ──────────────────────────────────────────
+  function renderPluginsPanel(emptyMsg) {
+    const list = document.getElementById('vm-plugins-list');
+    const count = document.getElementById('vm-plugins-count');
+    if (!list) return;
+    if (!loaded.length) { list.innerHTML = '<div class="vm-plug-empty">' + esc(emptyMsg || 'No community plugins found.') + '</div>'; if (count) count.textContent = ''; renderGaps(); return; }
+    if (count) count.textContent = loaded.filter(p => p.instance).length + '/' + loaded.length + ' active';
+    list.innerHTML = loaded.map(p => {
+      const missing = p.rec ? p.rec.missing.size : 0;
+      return '<div class="vm-plug-item"><div class="vm-plug-head">'
+        + '<span class="vm-plug-dot ' + p.status + '"></span>'
+        + '<span class="vm-plug-name">' + esc(p.name) + '</span>'
+        + (p.status === 'red' ? '<span class="vm-plug-toggle" data-run="' + esc(p.id) + '">run anyway</span>' : '')
+        + '</div>'
+        + '<div class="vm-plug-meta">v' + esc(p.manifest.version || '?') + ' · ' + esc(p.reason)
+        + (missing ? ' · ' + missing + ' missing API' : '') + (p.instance ? ' · ✓ active' : '') + '</div>'
+        + (p.error ? '<div class="vm-plug-err">' + esc(p.error) + '</div>' : '')
+        + '</div>';
+    }).join('');
+    list.querySelectorAll('[data-run]').forEach(b => b.addEventListener('click', () => runRed(b.dataset.run)));
+    renderGaps();
+  }
+  function renderGaps() {
+    const el = document.getElementById('vm-plugins-gaps'); if (!el) return;
+    const arr = Array.from(gaps.entries()).sort((a, b) => b[1] - a[1]);
+    el.innerHTML = arr.length ? arr.map(([k, n]) => '<div class="vm-gap-row"><span>' + esc(k) + '</span><span class="vm-gap-n">' + n + '×</span></div>').join('') : '<div class="vm-plug-empty">No missing-API access recorded.</div>';
+  }
+  function updateStatusbarVisibility() { const sb = document.getElementById('vm-statusbar'); if (sb) sb.classList.toggle('visible', sb.children.length > 0); }
+
+  // ── Command palette ─────────────────────────────────────────────────────────
+  let _cmdSel = 0, _cmdFiltered = [];
+  function openCmdPal() {
+    const ov = document.getElementById('vm-cmdpal-overlay'); if (!ov) return;
+    ov.classList.add('open');
+    const inp = document.getElementById('vm-cmdpal-input'); inp.value = ''; filterCmds(''); inp.focus();
+  }
+  function closeCmdPal() { const ov = document.getElementById('vm-cmdpal-overlay'); if (ov) ov.classList.remove('open'); }
+  function filterCmds(q) {
+    q = q.toLowerCase().trim();
+    _cmdFiltered = Array.from(commands.values()).filter(c => !q || (c.name + ' ' + (c.pluginName || '')).toLowerCase().includes(q));
+    _cmdSel = 0; renderCmds();
+  }
+  function renderCmds() {
+    const list = document.getElementById('vm-cmdpal-list'); if (!list) return;
+    if (!_cmdFiltered.length) { list.innerHTML = '<div class="vm-cmd-empty">No commands. Load plugins from the 🧩 tab first.</div>'; return; }
+    list.innerHTML = _cmdFiltered.map((c, i) => '<div class="vm-cmd-item' + (i === _cmdSel ? ' sel' : '') + '" data-i="' + i + '">' + esc(c.name) + '<span class="vm-cmd-plug">' + esc(c.pluginName || '') + '</span></div>').join('');
+    list.querySelectorAll('.vm-cmd-item').forEach(it => it.addEventListener('click', () => runCmd(_cmdFiltered[+it.dataset.i])));
+  }
+  function runCmd(c) {
+    closeCmdPal(); if (!c) return;
+    try { if (c.checkCallback) c.checkCallback(false); else if (c.callback) c.callback(); else new Notice('Command has no callback'); }
+    catch (e) { new Notice('Command error: ' + ((e && e.message) || e)); console.error('[plugin command]', e); }
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  function init() {
+    // DOM-prototype augmentations Obsidian plugins assume everywhere
+    const P = HTMLElement.prototype;
+    if (!P._vmPatched) {
+      P._vmPatched = true;
+      function applyElOpts(el, o) {
+        if (!o) return;
+        if (typeof o === 'string') { el.className = o; return; }
+        if (o.cls) el.className = Array.isArray(o.cls) ? o.cls.join(' ') : o.cls;
+        if (o.text != null) el.textContent = String(o.text);
+        if (o.attr) for (const k in o.attr) el.setAttribute(k, o.attr[k]);
+        if (o.href != null) el.href = o.href;
+        if (o.type != null) el.type = o.type;
+        if (o.placeholder != null) el.placeholder = o.placeholder;
+        if (o.value != null) el.value = o.value;
+        if (o.title != null) el.title = o.title;
+      }
+      P.createEl = function (tag, o, cb) { const el = document.createElement(tag); applyElOpts(el, o); this.appendChild(el); if (cb) cb(el); return el; };
+      P.createDiv = function (o, cb) { return this.createEl('div', o, cb); };
+      P.createSpan = function (o, cb) { return this.createEl('span', o, cb); };
+      P.setText = function (t) { this.textContent = t == null ? '' : String(t); return this; };
+      P.empty = function () { while (this.firstChild) this.removeChild(this.firstChild); return this; };
+      P.addClass = function (...c) { this.classList.add(...c.filter(Boolean)); return this; };
+      P.removeClass = function (...c) { this.classList.remove(...c.filter(Boolean)); return this; };
+      P.toggleClass = function (c, on) { this.classList.toggle(c, on); return this; };
+      P.setAttr = function (k, v) { this.setAttribute(k, v); return this; };
+      P.setAttrs = function (o) { for (const k in o) this.setAttribute(k, o[k]); return this; };
+      const F = DocumentFragment.prototype;
+      if (!F.createEl) { F.createEl = P.createEl; F.createDiv = P.createDiv; F.createSpan = P.createSpan; }
+    }
+    // Globals some bundles touch directly
+    if (!window.process) window.process = { platform: 'browser', env: {}, cwd: () => '/', nextTick: f => setTimeout(f, 0), versions: {} };
+    if (!window.global) window.global = window;
+
+    document.getElementById('vm-plugins-reload')?.addEventListener('click', () => load());
+    const inp = document.getElementById('vm-cmdpal-input');
+    if (inp) {
+      inp.addEventListener('input', () => filterCmds(inp.value));
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); _cmdSel = Math.min(_cmdSel + 1, _cmdFiltered.length - 1); renderCmds(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); _cmdSel = Math.max(_cmdSel - 1, 0); renderCmds(); }
+        else if (e.key === 'Enter') { e.preventDefault(); runCmd(_cmdFiltered[_cmdSel]); }
+        else if (e.key === 'Escape') { e.preventDefault(); closeCmdPal(); }
+      });
+    }
+    const ov = document.getElementById('vm-cmdpal-overlay');
+    if (ov) ov.addEventListener('click', e => { if (e.target === ov) closeCmdPal(); });
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'p' || e.key === 'P') && !e.altKey) {
+        if (loaded.length) { e.preventDefault(); openCmdPal(); }
+      }
+    });
+  }
+  init();
+
+  // Load a single plugin from in-memory text (no folder picker). Useful for
+  // nakliOS hand-off, a future "paste a plugin" flow, and headless testing.
+  async function loadFromText(manifest, code, css) {
+    const entry = await loadOne({ manifest, code, css: css || null });
+    renderPluginsPanel();
+    return entry;
+  }
+
+  return { load, loadFromText, reset, openCmdPal, _loaded: loaded, _gaps: gaps, _commands: commands };
+})();
+window.VMPlugins = VMPlugins;
 </script>
 
+<!-- ── Obsidian plugin runtime UI ──────────────────────────────────────────── -->
+<div id="vm-statusbar"></div>
+<div id="vm-toasts"></div>
+<div id="vm-cmdpal-overlay">
+  <div id="vm-cmdpal">
+    <input id="vm-cmdpal-input" type="text" placeholder="Run a command…" autocomplete="off">
+    <div id="vm-cmdpal-list"></div>
+  </div>
+</div>
 
 </body>
 </html>
