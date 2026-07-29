@@ -6840,7 +6840,7 @@ const VMPlugins = (() => {
   init();
 
   // Load a single plugin from in-memory text (no folder picker). Useful for
-  // nakliOS hand-off, a future "paste a plugin" flow, and headless testing.
+  // NakliOS hand-off, a future "paste a plugin" flow, and headless testing.
   async function loadFromText(manifest, code, css) {
     const entry = await loadOne({ manifest, code, css: css || null });
     renderPluginsPanel();

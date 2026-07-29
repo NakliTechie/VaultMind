@@ -28,7 +28,7 @@ sequencing Vite → CM6 → runtime. We re-litigated and **inverted the sequence
 
 - **Loader** — reads `.obsidian/plugins/*/{manifest.json,main.js,styles.css}` +
   `community-plugins.json` (enabled set) via the existing FSA dir handle; also
-  `loadFromText(manifest, code, css)` for no-picker / nakliOS / headless use.
+  `loadFromText(manifest, code, css)` for no-picker / NakliOS / headless use.
 - **`obsidian` shim** — `Plugin`, `Component`, `Events`, `Notice`, `TFile`/
   `TFolder`/`TAbstractFile`, `Vault` (read + create/modify/delete/process,
   events), `MetadataCache` (`getFileCache`, `resolvedLinks`), `Workspace`
