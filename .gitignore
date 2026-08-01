@@ -5,6 +5,8 @@
 !.gitignore
 !docs/
 !docs/**
+!scripts/
+!scripts/*.mjs
 
 # wrangler files
 .wrangler

@@ -26,6 +26,18 @@ Everything is a single HTML file. Open it, load a vault, start exploring.
 
 ## How to run
 
+### Storage locations
+
+VaultMind keeps its original standalone flows: open a local vault folder for
+read/write access, or inspect a ZIP in Browser mode. When it runs inside
+NakliOS it also exposes separate **Folder** and **Crate** vaults through the
+NakliOS filesystem broker. Those hosted vaults live under
+`apps/vaultmind/` on the selected backend; switching locations never copies or
+deletes notes. Core editing, generated notes, Maps of Content, and `index.md`
+write back to the active location. Obsidian community-plugin execution remains
+available only for a directly opened local folder in this first hosted-storage
+release.
+
 ```bash
 # Serve locally (required for File System Access API and WebGPU)
 python3 -m http.server 8080

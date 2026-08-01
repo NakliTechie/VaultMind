@@ -871,9 +871,17 @@ body {
 .vm-plug-empty { color: var(--muted); font-size: 0.8rem; padding: 8px 2px; }
 .vm-gap-row { display: flex; justify-content: space-between; padding: 2px 4px; border-bottom: 1px solid var(--border); }
 .vm-gap-row .vm-gap-n { color: var(--tag-col); }
+.storage-switch { display:flex; gap:3px; padding:3px; margin:18px auto 10px; width:max-content; max-width:100%; border:1px solid var(--border); border-radius:9px; background:var(--surface); }
+.storage-switch button { border:0; border-radius:7px; padding:7px 10px; background:transparent; color:var(--muted); cursor:pointer; font:inherit; }
+.storage-switch button:hover { color:var(--text); background:var(--surface2); }
+.storage-switch button.active { color:var(--text); background:var(--surface2); box-shadow:0 1px 5px rgba(0,0,0,.2); }
+.storage-switch button.unavailable { opacity:.58; }
+.storage-hint { min-height:1.3em; color:var(--muted); font-size:.78rem; text-align:center; margin-bottom:10px; }
 </style>
 </head>
 <body>
+
+<script src="https://naklios.dev/sdk/naklios.js"></script>
 
 <!-- ── Drop screen ─────────────────────────────────── -->
 <div id="drop-screen">
@@ -881,6 +889,8 @@ body {
   <div class="drop-logo">🧠</div>
   <div class="drop-title">VaultMind</div>
   <div class="drop-sub">Explore your Obsidian vault — force graph, semantic audit, local AI.<br>Everything stays in your browser. Zero data leaves your device.</div>
+  <div class="storage-switch" id="storage-switch" aria-label="Vault storage location"></div>
+  <div class="storage-hint" id="storage-hint">Open a local folder or ZIP. Nothing is uploaded.</div>
   <div class="drop-actions">
     <button class="btn btn-primary" id="btn-open-folder">Open Vault Folder</button>
     <span style="color:var(--muted);font-size:0.85rem">or</span>
@@ -1327,6 +1337,8 @@ const vault = {
   bases:  new Map(),   // path → { path, name, raw, config }  (Obsidian .base files)
   vaultName: '',
   dirHandle: null,     // FileSystemDirectoryHandle — set when folder is opened
+  storageMode: 'browser', // browser | naklios
+  hostBackend: null,      // fsa | crate when storageMode === naklios
 };
 
 // graph sim state
@@ -3752,13 +3764,67 @@ document.getElementById('note-textarea').addEventListener('keydown', e => {
 
 // ── Save ─────────────────────────────────────────────────────────────────────
 
-async function getFileHandleFromPath(dirHandle, path) {
+function vaultWritable() {
+  return !!vault.dirHandle || vault.storageMode === 'naklios';
+}
+
+function vaultToast(message, color = 'var(--node-orph)', timeout = 5000) {
+  const host = document.getElementById('vm-toasts');
+  if (!host) return;
+  const toast = document.createElement('div');
+  toast.className = 'vm-toast';
+  toast.style.borderLeftColor = color;
+  toast.setAttribute('role', 'status');
+  toast.textContent = message;
+  host.appendChild(toast);
+  setTimeout(() => toast.remove(), timeout);
+}
+
+async function storageRead(path) {
+  if (vault.storageMode === 'naklios') return await window.naklios.fs.read(path);
+  if (!vault.dirHandle) throw new Error('This ZIP is read-only');
+  const fh = await getFileHandleFromPath(vault.dirHandle, path, false);
+  return await (await fh.getFile()).text();
+}
+
+async function storageWrite(path, data) {
+  if (vault.storageMode === 'naklios') {
+    await window.naklios.fs.write(path, data);
+    return;
+  }
+  if (!vault.dirHandle) throw new Error('This ZIP is read-only');
+  const fh = await getFileHandleFromPath(vault.dirHandle, path, true);
+  const writable = await fh.createWritable();
+  await writable.write(data);
+  await writable.close();
+}
+
+async function storageDelete(path) {
+  if (vault.storageMode === 'naklios') {
+    await window.naklios.fs.delete(path);
+    return;
+  }
+  if (!vault.dirHandle) throw new Error('This ZIP is read-only');
+  const parts = path.replace(/^\//, '').split('/');
+  let handle = vault.dirHandle;
+  for (let i = 0; i < parts.length - 1; i++) handle = await handle.getDirectoryHandle(parts[i]);
+  await handle.removeEntry(parts[parts.length - 1], { recursive:true });
+}
+
+async function storageExists(path) {
+  if (vault.storageMode === 'naklios') return await window.naklios.fs.exists(path);
+  if (!vault.dirHandle) return vault.byPath.has(path);
+  try { await getFileHandleFromPath(vault.dirHandle, path, false); return true; }
+  catch (_) { return false; }
+}
+
+async function getFileHandleFromPath(dirHandle, path, create = true) {
   const parts = path.replace(/^\//, '').split('/');
   let handle = dirHandle;
   for (let i = 0; i < parts.length - 1; i++) {
-    handle = await handle.getDirectoryHandle(parts[i]);
+    handle = await handle.getDirectoryHandle(parts[i], { create });
   }
-  return handle.getFileHandle(parts[parts.length - 1], { create: true });
+  return handle.getFileHandle(parts[parts.length - 1], { create });
 }
 
 async function saveNoteEdit() {
@@ -3766,23 +3832,20 @@ async function saveNoteEdit() {
   const content = document.getElementById('note-textarea').value;
   _editNote.body = content;          // update in-memory copy
 
-  if (vault.dirHandle && _editNote.path) {
+  if (vaultWritable() && _editNote.path) {
     try {
-      const fh = await getFileHandleFromPath(vault.dirHandle, _editNote.path);
-      const w  = await fh.createWritable();
       // Reconstruct the file: restore frontmatter if it had any
       const hasFm = Object.keys(_editNote.fm).length > 0;
       let fileContent = content;
       if (hasFm) fileContent = dumpFrontmatter(_editNote.fm) + content;
-      await w.write(fileContent);
-      await w.close();
+      await storageWrite(_editNote.path, fileContent);
       _editNote._savedBody = content;
       _editNote._dirty = false;
       markDirtyInList(_editNote);
       showSaved();
       await saveIndexMd();
     } catch (err) {
-      alert('Save failed: ' + err.message);
+      vaultToast('Save failed: ' + err.message);
     }
   } else {
     // No dirHandle — offer download
@@ -3858,9 +3921,117 @@ document.getElementById('btn-change').addEventListener('click', () => {
   cancelAnimationFrame(g.raf);
   document.getElementById('app').classList.remove('visible');
   document.getElementById('drop-screen').style.display = '';
+  renderStorageSwitch();
 });
 
 // ── Vault Loading ─────────────────────────────────────────────────────────────
+
+function hostBackendDescriptor(id) {
+  return window.naklios?.capabilities?.fsBackends?.find(item => item.id === id) || null;
+}
+
+function storageLabel() {
+  if (vault.storageMode !== 'naklios') return vault.dirHandle ? 'Local folder' : 'Browser / ZIP';
+  return vault.hostBackend === 'crate' ? 'Crate' : 'NakliOS Folder';
+}
+
+function renderStorageSwitch() {
+  const root = document.getElementById('storage-switch');
+  if (!root) return;
+  root.replaceChildren();
+  const hosted = window.naklios?.capabilities?.hosted === true;
+  const choices = [
+    { id:'browser', label:'Browser / ZIP', available:true },
+    { id:'fsa', label:'Folder', available:hosted && !!hostBackendDescriptor('fsa') },
+    { id:'crate', label:'Crate', available:hosted && !!hostBackendDescriptor('crate') },
+  ];
+  for (const choice of choices) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = choice.available ? choice.label : `Connect ${choice.label}`;
+    button.classList.toggle('active', choice.id === 'browser'
+      ? vault.storageMode === 'browser'
+      : vault.storageMode === 'naklios' && vault.hostBackend === choice.id);
+    button.classList.toggle('unavailable', !choice.available);
+    button.setAttribute('aria-pressed', String(button.classList.contains('active')));
+    button.addEventListener('click', () => {
+      if (choice.id === 'browser') {
+        vault.storageMode = 'browser'; vault.hostBackend = null; vault.dirHandle = null;
+        document.getElementById('storage-hint').textContent =
+          'Open a local folder or ZIP. Nothing is uploaded.';
+        renderStorageSwitch();
+      } else if (choice.available) {
+        void loadNakliOSVault(choice.id);
+      } else {
+        window.naklios?.openSettings?.('storage');
+      }
+    });
+    root.appendChild(button);
+  }
+  const hint = document.getElementById('storage-hint');
+  if (hint && vault.storageMode === 'naklios') {
+    hint.textContent = `${storageLabel()} · apps/vaultmind/ · switching never copies or deletes notes.`;
+  }
+}
+
+async function waitForHostBackend(id, timeout = 1800) {
+  if (window.naklios?.capabilities?.fsBackend === id) return true;
+  return await new Promise(resolve => {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (window.naklios?.capabilities?.fsBackend === id) {
+        clearInterval(timer); resolve(true);
+      } else if (Date.now() - started > timeout) {
+        clearInterval(timer); resolve(false);
+      }
+    }, 30);
+  });
+}
+
+async function loadNakliOSVault(backend) {
+  const descriptor = hostBackendDescriptor(backend);
+  if (!descriptor) { window.naklios?.openSettings?.('storage'); return; }
+  document.getElementById('loading').classList.add('visible');
+  try {
+    if (window.naklios.capabilities.fsBackend !== backend) {
+      const accepted = await window.naklios.fs.useBackend(backend);
+      if (!accepted) throw new Error('Storage switch cancelled');
+      if (!await waitForHostBackend(backend)) throw new Error('NakliOS did not finish binding storage');
+    }
+    vault.storageMode = 'naklios';
+    vault.hostBackend = backend;
+    vault.dirHandle = null;
+    vault.vaultName = descriptor.name
+      ? `${backend === 'crate' ? 'Crate' : 'Folder'} · ${descriptor.name}`
+      : (backend === 'crate' ? 'Crate vault' : 'NakliOS Folder vault');
+    setProgress(2, `Reading ${backend === 'crate' ? 'Crate' : 'Folder'}…`);
+    const files = [];
+    async function walk(prefix = '') {
+      const entries = await window.naklios.fs.list(prefix);
+      for (const path of entries) {
+        const relative = path.slice(prefix.length).replace(/^\//, '');
+        const first = relative.split('/')[0];
+        if (!first || first.startsWith('.') || first === 'node_modules') continue;
+        if (path.endsWith('/')) await walk(path);
+        else if (/\.(?:md|base)$/i.test(path)) {
+          files.push({ path, content:await window.naklios.fs.read(path) });
+          if (files.length % 50 === 0) setProgress(5, `Reading ${files.length} notes…`);
+        }
+      }
+    }
+    await walk('');
+    if (!files.length) {
+      throw new Error('No .md or .base files found in apps/vaultmind/ on this storage location');
+    }
+    renderStorageSwitch();
+    await loadFiles(files);
+  } catch (error) {
+    document.getElementById('loading').classList.remove('visible');
+    if (error.message !== 'Storage switch cancelled') {
+      vaultToast('Could not open NakliOS storage: ' + error.message);
+    }
+  }
+}
 
 async function loadFiles(files) {
   document.getElementById('loading').classList.add('visible');
@@ -3870,6 +4041,7 @@ async function loadFiles(files) {
     buildAuditPanel();
     buildBasesList();
     buildHeaderStats();
+    window.naklios?.title?.(`VaultMind — ${vault.vaultName}`);
     saveIndexMd();  // write/update index.md if folder access exists
     startEmbedWorker(); // begin indexing vault for RAG
     initIngestSystem(); // set up _inbox/ watcher and ingest tab
@@ -3893,20 +4065,23 @@ async function loadFiles(files) {
   } catch (err) {
     document.getElementById('loading').classList.remove('visible');
     console.error(err);
-    alert('Error loading vault: ' + err.message);
+    vaultToast('Error loading vault: ' + err.message);
   }
 }
 
 // File System Access API
 document.getElementById('btn-open-folder').addEventListener('click', async () => {
   if (!window.showDirectoryPicker) {
-    alert('Your browser does not support the Folder Picker API.\nPlease use Chrome / Edge, or drop a ZIP file instead.');
+    vaultToast('Your browser does not support the Folder Picker API. Use Chrome / Edge, or drop a ZIP file instead.');
     return;
   }
   try {
     const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
     vault.vaultName  = dirHandle.name;
     vault.dirHandle  = dirHandle;
+    vault.storageMode = 'browser';
+    vault.hostBackend = null;
+    renderStorageSwitch();
     document.getElementById('loading').classList.add('visible');
     setProgress(2, 'Reading folder…');
     const files = [];
@@ -3922,17 +4097,21 @@ document.getElementById('btn-open-folder').addEventListener('click', async () =>
       }
     }
     await walk(dirHandle, '');
-    if (files.length === 0) { document.getElementById('loading').classList.remove('visible'); alert('No .md files found in this folder.'); return; }
+    if (files.length === 0) { document.getElementById('loading').classList.remove('visible'); vaultToast('No .md files found in this folder.'); return; }
     await loadFiles(files);
   } catch (e) {
     document.getElementById('loading').classList.remove('visible');
-    if (e.name !== 'AbortError') alert('Could not open folder: ' + e.message);
+    if (e.name !== 'AbortError') vaultToast('Could not open folder: ' + e.message);
   }
 });
 
 // ZIP drop
 async function handleZip(file) {
   vault.vaultName = file.name.replace(/\.zip$/i, '');
+  vault.dirHandle = null;
+  vault.storageMode = 'browser';
+  vault.hostBackend = null;
+  renderStorageSwitch();
   document.getElementById('loading').classList.add('visible');
   setProgress(2, 'Reading ZIP…');
   try {
@@ -3940,7 +4119,7 @@ async function handleZip(file) {
     const zip     = await JSZip.loadAsync(file);
     const entries = Object.entries(zip.files)
       .filter(([p, e]) => !e.dir && (p.endsWith('.md') || p.endsWith('.base')) && !p.split('/').some(s => s.startsWith('.')));
-    if (entries.length === 0) { document.getElementById('loading').classList.remove('visible'); alert('No .md or .base files found in this ZIP.'); return; }
+    if (entries.length === 0) { document.getElementById('loading').classList.remove('visible'); vaultToast('No .md or .base files found in this ZIP.'); return; }
     setProgress(5, `Found ${entries.length} notes, reading…`);
     const files = [];
     for (let i = 0; i < entries.length; i++) {
@@ -3951,7 +4130,7 @@ async function handleZip(file) {
     await loadFiles(files);
   } catch (err) {
     document.getElementById('loading').classList.remove('visible');
-    alert('Could not read ZIP: ' + err.message);
+    vaultToast('Could not read ZIP: ' + err.message);
   }
 }
 
@@ -3964,7 +4143,7 @@ dropZone.addEventListener('drop', e => {
   e.preventDefault(); dropZone.classList.remove('drag-over');
   const file = e.dataTransfer.files[0];
   if (file?.name.endsWith('.zip')) handleZip(file);
-  else alert('Please drop a .zip file.');
+  else vaultToast('Please drop a .zip file.');
 });
 
 // Global drop fallback
@@ -4542,12 +4721,9 @@ function buildIndexMd() {
 }
 
 async function saveIndexMd() {
-  if (!vault.dirHandle) return;
+  if (!vaultWritable()) return;
   try {
-    const fh = await vault.dirHandle.getFileHandle('index.md', { create: true });
-    const w  = await fh.createWritable();
-    await w.write(buildIndexMd());
-    await w.close();
+    await storageWrite('index.md', buildIndexMd());
   } catch (e) { console.warn('index.md write failed:', e); }
 }
 
@@ -4559,11 +4735,9 @@ async function chatSaveNote(content) {
   const filename  = `${safe}-${ts}.md`;
   const md        = `---\ntitle: "${title}"\ndate: ${new Date().toISOString().slice(0, 10)}\nsource: VaultMind Chat\n---\n\n${content}`;
 
-  if (vault.dirHandle) {
+  if (vaultWritable()) {
     try {
-      const fh = await vault.dirHandle.getFileHandle(filename, { create: true });
-      const w  = await fh.createWritable();
-      await w.write(md); await w.close();
+      await storageWrite(filename, md);
       chatToast(`Saved: ${filename}`);
       await saveIndexMd();  // keep index.md current
       return;
@@ -5132,26 +5306,17 @@ async function ensureVaultDir(...segments) {
 
 async function writeVaultFile(segments, content) {
   // segments: ['_sources', '2026-04-05', 'article.md']
-  if (!vault.dirHandle) return false;
+  if (!vaultWritable()) return false;
   try {
-    const dirParts = segments.slice(0, -1);
-    const filename = segments[segments.length - 1];
-    const dirHandle = dirParts.length ? await ensureVaultDir(...dirParts) : vault.dirHandle;
-    const fh = await dirHandle.getFileHandle(filename, { create: true });
-    const w  = await fh.createWritable();
-    await w.write(content); await w.close();
+    await storageWrite(segments.join('/'), content);
     return true;
   } catch (e) { console.warn('writeVaultFile failed:', e); return false; }
 }
 
 async function readVaultFile(segments) {
-  if (!vault.dirHandle) return null;
+  if (!vaultWritable()) return null;
   try {
-    let handle = vault.dirHandle;
-    for (let i = 0; i < segments.length - 1; i++) handle = await handle.getDirectoryHandle(segments[i]);
-    const fh   = await handle.getFileHandle(segments[segments.length - 1]);
-    const file = await fh.getFile();
-    return await file.text();
+    return await storageRead(segments.join('/'));
   } catch { return null; }
 }
 
@@ -5679,8 +5844,8 @@ window.processIngestItem = async function(id) {
   // Block if chat is streaming
   if (chat.streaming) { ingestToast('Chat is running — wait for it to finish first'); return; }
 
-  if (!vault.dirHandle) {
-    ingestToast('ZIP mode — files won\'t be saved to disk. Open vault as folder to persist notes.', 'var(--tag-col)');
+  if (!vaultWritable()) {
+    ingestToast('ZIP mode — generated notes will download instead of saving into the vault.', 'var(--tag-col)');
   }
 
   ingest.processing = true;
@@ -5859,15 +6024,13 @@ window.ingestAccept = async function(idx) {
       // Update existing page
       const key  = p.title.toLowerCase().replace(/\.md$/i, '');
       const note = vault.byName.get(key);
-      if (note && vault.dirHandle) {
+      if (note && vaultWritable()) {
         const append = '\n\n' + (p.append_content || '');
         note.body += append;
         const hasFm = Object.keys(note.fm).length > 0;
         let fileContent = note.body;
         if (hasFm) fileContent = dumpFrontmatter(note.fm) + note.body;
-        const fh = await getFileHandleFromPath(vault.dirHandle, note.path);
-        const w  = await fh.createWritable();
-        await w.write(fileContent); await w.close();
+        await storageWrite(note.path, fileContent);
       } else if (!note) {
         // Page doesn't exist yet — create it
         const filename = p.title.replace(/[/\\?%*:|"<>]/g, '-').slice(0, 80) + '.md';
@@ -6304,9 +6467,8 @@ const VMPlugins = (() => {
 
   // ── Vault adapter ───────────────────────────────────────────────────────────
   async function diskWrite(path, data) {
-    if (!vault.dirHandle) return;
-    const fh = await getFileHandleFromPath(vault.dirHandle, path);
-    const w = await fh.createWritable(); await w.write(data); await w.close();
+    if (!vaultWritable()) return;
+    await storageWrite(path, data);
   }
   class Vault extends Events {
     getName() { return vault.vaultName; }
@@ -6349,24 +6511,18 @@ const VMPlugins = (() => {
   }
   async function deleteNote(note) {
     vault.byPath.delete(note.path); vault.byName.delete(note.filename.toLowerCase());
-    if (vault.dirHandle) {
-      try {
-        const parts = note.path.replace(/^\//, '').split('/');
-        let h = vault.dirHandle;
-        for (let i = 0; i < parts.length - 1; i++) h = await h.getDirectoryHandle(parts[i]);
-        await h.removeEntry(parts[parts.length - 1]);
-      } catch (e) { console.error('[plugin delete]', e); }
-    }
+    if (vaultWritable()) try { await storageDelete(note.path); }
+    catch (e) { console.error('[plugin delete]', e); }
     vaultObj.trigger('delete', fileFor(note));
   }
   const vaultAdapter = {
     async read(path) {
       const n = vault.byPath.get(path); if (n) return reconstruct(n);
-      if (vault.dirHandle) { try { const fh = await getFileHandleFromPath(vault.dirHandle, path); return await (await fh.getFile()).text(); } catch (e) {} }
+      if (vaultWritable()) { try { return await storageRead(path); } catch (e) {} }
       throw new Error('not found: ' + path);
     },
     async write(path, data) { await diskWrite(path, data); },
-    async exists(path) { if (vault.byPath.has(path)) return true; if (vault.dirHandle) { try { await getFileHandleFromPath(vault.dirHandle, path); return true; } catch (e) {} } return false; },
+    async exists(path) { if (vault.byPath.has(path)) return true; return await storageExists(path); },
     async list() { recordGap('adapter.list'); return { files: [], folders: [] }; },
     async mkdir() {},
     async remove(path) { const n = vault.byPath.get(path); if (n) await deleteNote(n); },
@@ -6706,6 +6862,10 @@ const VMPlugins = (() => {
   // ── Loader entry point ──────────────────────────────────────────────────────
   async function load() {
     reset();
+    if (vault.storageMode === 'naklios') {
+      renderPluginsPanel('Community plugins stay disabled for Folder/Crate vaults in NakliOS v1. Core note editing and generation remain writable.');
+      return;
+    }
     if (!vault.dirHandle) { renderPluginsPanel('Folder mode required — plugins load from .obsidian/plugins. Open a vault as a folder (not ZIP).'); return; }
     let obs;
     try { obs = await vault.dirHandle.getDirectoryHandle('.obsidian'); } catch (e) { renderPluginsPanel('No .obsidian folder in this vault.'); return; }
@@ -6850,6 +7010,17 @@ const VMPlugins = (() => {
   return { load, loadFromText, reset, openCmdPal, _loaded: loaded, _gaps: gaps, _commands: commands };
 })();
 window.VMPlugins = VMPlugins;
+
+renderStorageSwitch();
+if (window.naklios) {
+  window.naklios.onCapabilitiesChange(() => renderStorageSwitch());
+  window.naklios.beforeClose(async () => {
+    if (typeof _editNote !== 'undefined' && _editNote?._dirty) await saveNoteEdit();
+  });
+  window.naklios.theme.request();
+  window.naklios.requestCapabilities();
+  window.naklios.ready();
+}
 </script>
 
 <!-- ── Obsidian plugin runtime UI ──────────────────────────────────────────── -->
