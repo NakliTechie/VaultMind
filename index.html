@@ -1075,8 +1075,12 @@ body {
           <!-- Model setup -->
           <div class="chat-setup">
             <div class="chat-mode-row">
+              <button class="chat-mode-btn" data-chat-mode="nakli" id="chat-mode-nakli" style="display:none">NakliOS AI</button>
               <button class="chat-mode-btn active" data-chat-mode="local">Local (WebGPU)</button>
               <button class="chat-mode-btn" data-chat-mode="api">API</button>
+            </div>
+            <div class="chat-cfg" id="chat-nakli-cfg" style="display:none">
+              <p style="margin:0;font-size:12px;color:var(--muted,#888)">Uses the shared NakliOS model — <span id="chat-nakli-model">on-device</span>. Private, zero setup. Coding tools use your configured endpoint; general chat here uses the on-device default.</p>
             </div>
             <div class="chat-cfg" id="chat-local-cfg">
               <select class="chat-cfg-input" id="chat-model-id">
@@ -4799,6 +4803,33 @@ async function chatSend() {
     return;
   }
 
+  if (chat.mode === 'nakli') {
+    // Route through the shared NakliOS host AI: general chat resolves to the
+    // on-device model by default; the host handles model + permission. Streams
+    // the same way as the other modes.
+    const { div, bubbleId } = chatAddBubble('assistant', '');
+    let full = '';
+    chat._nakliStop = false;
+    try {
+      const stream = await window.naklios.ai.chat.completions.create({ messages: apiMessages, stream: true, max_tokens: 600 });
+      chat._activeStream = stream;
+      for await (const chunk of stream) {
+        if (chat._nakliStop) break;
+        const tok = chunk.choices?.[0]?.delta?.content || '';
+        if (tok) {
+          full += tok;
+          const el = document.getElementById(bubbleId);
+          if (el) { el.textContent += tok; document.getElementById('chat-messages').scrollTop = 9999; }
+        }
+      }
+      chatFinalizeAssistant(div, full);
+    } catch (err) {
+      const el = document.getElementById(bubbleId);
+      if (el) el.textContent = (full ? full + '\n' : '') + '[Error: ' + (err.message || err) + ']';
+    } finally { chat._activeStream = null; finish(); }
+    return;
+  }
+
   if (chat.mode === 'local') {
     const { div, bubbleId } = chatAddBubble('assistant', '');
     let full = '';
@@ -5002,11 +5033,31 @@ document.getElementById('chat-model-filter').addEventListener('input', e => {
 document.querySelectorAll('.chat-mode-btn').forEach(btn => btn.addEventListener('click', () => {
   const mode = btn.dataset.chatMode;
   chat.mode  = mode;
+  chat.modeExplicit = true;  // remember the user's choice; don't auto-flip away from it
   document.querySelectorAll('.chat-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.chatMode === mode));
   document.getElementById('chat-local-cfg').style.display = mode === 'local' ? '' : 'none';
   document.getElementById('chat-api-cfg').style.display   = mode === 'api'   ? '' : 'none';
+  const nk = document.getElementById('chat-nakli-cfg'); if (nk) nk.style.display = mode === 'nakli' ? '' : 'none';
   document.getElementById('chat-send').disabled = mode === 'local' ? !chat.modelReady : false;
 }));
+
+// NakliOS shared AI: when hosted and the host exposes AI, offer it as a chat mode
+// and make it the default (private, zero-setup; general chat runs on the on-device
+// model, coding tools on the configured endpoint). Standalone, it stays hidden.
+function updateNakliAiMode(caps){
+  const on = !!(caps && caps.ai);
+  const btn = document.getElementById('chat-mode-nakli');
+  if (btn) btn.style.display = on ? '' : 'none';
+  const label = document.getElementById('chat-nakli-model');
+  if (label && caps && caps.aiModelLabel) label.textContent = caps.aiModelLabel;
+  if (on && !chat.modeExplicit && chat.mode !== 'nakli'){
+    document.querySelector('.chat-mode-btn[data-chat-mode="nakli"]')?.click();
+    chat.modeExplicit = false; // a programmatic default, not a user choice
+  } else if (!on && chat.mode === 'nakli'){
+    document.querySelector('.chat-mode-btn[data-chat-mode="local"]')?.click();
+    chat.modeExplicit = false;
+  }
+}
 
 async function tryAutoLoadModel() {
   const key = localStorage.getItem(LS_MODEL_KEY);
@@ -5080,6 +5131,7 @@ document.getElementById('btn-load-model').addEventListener('click', () => {
 
 document.getElementById('chat-send').addEventListener('click', chatSend);
 document.getElementById('chat-stop').addEventListener('click', () => {
+  if (chat.mode === 'nakli') { chat._nakliStop = true; try { chat._activeStream && chat._activeStream.cancel && chat._activeStream.cancel(); } catch(_){} return; }
   if (chat.worker) chat.worker.postMessage({ type: 'stop' });
 });
 document.getElementById('chat-textarea').addEventListener('keydown', e => {
@@ -5097,7 +5149,9 @@ document.getElementById('chat-panel').addEventListener('click', e => {
 
 function updateSearchBtn() {
   const btn = document.getElementById('chat-search-send');
-  const canSend = chat.mode === 'local' ? chat.modelReady : !!document.getElementById('chat-api-key').value.trim();
+  const canSend = chat.mode === 'local' ? chat.modelReady
+    : chat.mode === 'nakli' ? !!(window.naklios && window.naklios.capabilities && window.naklios.capabilities.ai)
+    : !!document.getElementById('chat-api-key').value.trim();
   btn.style.display = isSearchConfigured() ? '' : 'none';
   btn.disabled = !isSearchConfigured() || !canSend || chat.streaming;
 }
@@ -7013,7 +7067,7 @@ window.VMPlugins = VMPlugins;
 
 renderStorageSwitch();
 if (window.naklios) {
-  window.naklios.onCapabilitiesChange(() => renderStorageSwitch());
+  window.naklios.onCapabilitiesChange((caps) => { renderStorageSwitch(); updateNakliAiMode(caps); });
   window.naklios.beforeClose(async () => {
     if (typeof _editNote !== 'undefined' && _editNote?._dirty) await saveNoteEdit();
   });
