@@ -3976,6 +3976,10 @@ function renderStorageSwitch() {
   if (hint && vault.storageMode === 'naklios') {
     hint.textContent = `${storageLabel()} · apps/vaultmind/ · switching never copies or deletes notes.`;
   }
+  // The standalone "Open Vault Folder" CTA uses showDirectoryPicker (blocked in an
+  // iframe); hide it when hosted — the Folder/Crate options above are the host path.
+  const openFolderBtn = document.getElementById('btn-open-folder');
+  if (openFolderBtn) openFolderBtn.style.display = hosted ? 'none' : '';
 }
 
 async function waitForHostBackend(id, timeout = 1800) {
@@ -4075,6 +4079,15 @@ async function loadFiles(files) {
 
 // File System Access API
 document.getElementById('btn-open-folder').addEventListener('click', async () => {
+  // Hosted: NakliOS owns folder access — showDirectoryPicker is blocked in an
+  // iframe. Route to the host Folder backend, or open NakliOS storage settings to
+  // connect one. (The storage switch is the primary hosted path; this button is
+  // hidden when hosted, but the guard keeps the code correct either way.)
+  if (window.naklios?.capabilities?.hosted) {
+    if (hostBackendDescriptor('fsa')) { void loadNakliOSVault('fsa'); }
+    else { window.naklios?.openSettings?.('storage'); vaultToast('Connect a Folder in NakliOS storage, then choose it here.'); }
+    return;
+  }
   if (!window.showDirectoryPicker) {
     vaultToast('Your browser does not support the Folder Picker API. Use Chrome / Edge, or drop a ZIP file instead.');
     return;
